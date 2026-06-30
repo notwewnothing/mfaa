@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:mfaaa/screens/home.dart';
+import 'package:mfaaa/pages/clock_dashboard.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const AlarmApp());
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class AlarmApp extends StatelessWidget {
+  const AlarmApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Alarm Clock',
       theme: ThemeData(
         fontFamily: 'Digital',
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const HomePage(),
+      home: const ClockDashboard(),
     );
   }
 }
