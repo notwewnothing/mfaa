@@ -176,7 +176,11 @@ class ClockDashboard extends StatelessWidget {
                   Text(
                     store.nextAlarmSubtitle,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 19, color: _muted),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      color: _muted,
+                      height: -4,
+                    ),
                   ),
                 ],
               ),
@@ -403,20 +407,20 @@ class _LiveClock extends StatefulWidget {
 
 class _LiveClockState extends State<_LiveClock> {
   Timer? _ticker;
-  late String _label = _stamp();
-
-  static String _stamp() {
-    final now = DateTime.now();
-    return '${now.hour.toString().padLeft(2, '0')}:'
-        '${now.minute.toString().padLeft(2, '0')}';
-  }
+  late DateTime _now = DateTime.now();
+  bool _showColon = true;
 
   @override
   void initState() {
     super.initState();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      final next = _stamp();
-      if (next != _label && mounted) setState(() => _label = next);
+
+    _ticker = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+      if (mounted) {
+        setState(() {
+          _now = DateTime.now();
+          _showColon = !_showColon;
+        });
+      }
     });
   }
 
@@ -428,11 +432,45 @@ class _LiveClockState extends State<_LiveClock> {
 
   @override
   Widget build(BuildContext context) {
+    const bgStr = '88:88';
+    final fgStr =
+        '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}';
+
     return FittedBox(
       fit: BoxFit.fitWidth,
-      child: Text(
-        _label,
-        style: const TextStyle(fontSize: 150, color: _screen, height: 1),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(bgStr.length, (i) {
+          final isColon = bgStr[i] == ':';
+          final isActive = !isColon || _showColon;
+          final isOne = fgStr[i] == '1';
+
+          return Stack(
+            alignment: Alignment.centerRight,
+            children: [
+              Text(
+                bgStr[i],
+                style: TextStyle(
+                  fontSize: 150,
+                  color: _dim.withValues(alpha: 0.27),
+                  height: 1.6,
+                ),
+              ),
+              Transform.translate(
+                // fix for the "1" being slightly to the left
+                offset: isOne ? const Offset(7, 0) : Offset.zero,
+                child: Text(
+                  fgStr[i],
+                  style: TextStyle(
+                    fontSize: 150,
+                    color: isActive ? _screen : Colors.transparent,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ],
+          );
+        }),
       ),
     );
   }
