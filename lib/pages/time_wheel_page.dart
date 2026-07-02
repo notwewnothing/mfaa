@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../models/alarm.dart';
+
 const _mint = Color(0xffa8c889);
+const _mintDim = Color(0xff69745f);
 const _slot = Color(0xff36402b);
 const _closeBg = Color(0xff10130d);
 const _confirmBg = Color(0xff98ac84);
 
-class TimeWheelPage extends StatefulWidget {
-  const TimeWheelPage({super.key, this.onPicked});
+const _sounds = ['WAKE UP', 'KIND OF BLUE', 'SUNRISE', 'RADAR'];
+const _snoozes = [5, 10, 15];
 
-  final void Function(int hour, int minute)? onPicked;
+class TimeWheelPage extends StatefulWidget {
+  const TimeWheelPage({super.key, this.initial});
+
+  final AlarmDraft? initial;
 
   @override
   State<TimeWheelPage> createState() => _TimeWheelPageState();
@@ -18,14 +24,37 @@ class _TimeWheelPageState extends State<TimeWheelPage> {
   late final FixedExtentScrollController _hourWheel;
   late final FixedExtentScrollController _minuteWheel;
 
-  int _hour = 0;
-  int _minute = 0;
+  late int _hour;
+  late int _minute;
+  late String _sound;
+  late int _snooze;
+  late AlarmRepeat _repeat;
 
   @override
   void initState() {
     super.initState();
-    _hourWheel = FixedExtentScrollController(initialItem: 0);
-    _minuteWheel = FixedExtentScrollController(initialItem: 0);
+    final initial = widget.initial ?? _defaultDraft();
+    _hour = initial.hour;
+    _minute = initial.minute;
+    _sound = _sounds.contains(initial.sound) ? initial.sound : _sounds.first;
+    _snooze = _snoozes.contains(initial.snoozeMinutes)
+        ? initial.snoozeMinutes
+        : 10;
+    _repeat = initial.repeat;
+    _hourWheel = FixedExtentScrollController(initialItem: _hour);
+    _minuteWheel = FixedExtentScrollController(initialItem: _minute);
+  }
+
+  static AlarmDraft _defaultDraft() {
+    final soon = DateTime.now().add(const Duration(minutes: 5));
+    final minute = (soon.minute + 4) ~/ 5 * 5;
+    return AlarmDraft(
+      hour: minute >= 60 ? (soon.hour + 1) % 24 : soon.hour,
+      minute: minute % 60,
+      sound: _sounds.first,
+      snoozeMinutes: 10,
+      repeat: AlarmRepeat.once,
+    );
   }
 
   @override
@@ -33,6 +62,37 @@ class _TimeWheelPageState extends State<TimeWheelPage> {
     _hourWheel.dispose();
     _minuteWheel.dispose();
     super.dispose();
+  }
+
+  void _cycleSound() {
+    final i = _sounds.indexOf(_sound);
+    setState(() => _sound = _sounds[(i + 1) % _sounds.length]);
+  }
+
+  void _cycleSnooze() {
+    final i = _snoozes.indexOf(_snooze);
+    setState(() => _snooze = _snoozes[(i + 1) % _snoozes.length]);
+  }
+
+  void _cycleRepeat() {
+    final i = AlarmRepeat.values.indexOf(_repeat);
+    setState(
+      () => _repeat =
+          AlarmRepeat.values[(i + 1) % AlarmRepeat.values.length],
+    );
+  }
+
+  void _confirm() {
+    Navigator.pop(
+      context,
+      AlarmDraft(
+        hour: _hour,
+        minute: _minute,
+        sound: _sound,
+        snoozeMinutes: _snooze,
+        repeat: _repeat,
+      ),
+    );
   }
 
   @override
@@ -46,44 +106,35 @@ class _TimeWheelPageState extends State<TimeWheelPage> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Positioned(
-                    child: Container(
-                      alignment: Alignment.center,
-                      width: 200,
-                      height: 65,
-                      decoration: BoxDecoration(
-                        color: _slot,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                  Container(
+                    width: 250,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      color: _slot,
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20.0),
+                    padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _wheel(
-                          ctrl: _hourWheel,
-                          values: List.generate(24, (i) => i),
-                          onSelect: (value) {
-                            setState(() => _hour = value);
-                            widget.onPicked?.call(_hour, _minute);
-                          },
+                          controller: _hourWheel,
+                          count: 24,
+                          onSelect: (value) => setState(() => _hour = value),
                         ),
                         const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10.0),
+                          padding: EdgeInsets.symmetric(horizontal: 14),
                           child: Text(
                             ':',
-                            style: TextStyle(fontSize: 40, color: _mint),
+                            style: TextStyle(fontSize: 44, color: _mint),
                           ),
                         ),
                         _wheel(
-                          ctrl: _minuteWheel,
-                          values: List.generate(60, (i) => i),
-                          onSelect: (value) {
-                            setState(() => _minute = value);
-                            widget.onPicked?.call(_hour, _minute);
-                          },
+                          controller: _minuteWheel,
+                          count: 60,
+                          onSelect: (value) => setState(() => _minute = value),
                         ),
                       ],
                     ),
@@ -92,44 +143,70 @@ class _TimeWheelPageState extends State<TimeWheelPage> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _option(Icons.music_note, 'SOUND\nWAKEUP'),
-                  _option(Icons.notifications, 'SNOOZE\nEVERY 10 MIN'),
-                  _option(Icons.repeat, 'REPEAT\nNO'),
+                  Expanded(
+                    child: _Option(
+                      icon: Icons.music_note,
+                      title: 'SOUND',
+                      value: _sound,
+                      onTap: _cycleSound,
+                    ),
+                  ),
+                  Expanded(
+                    child: _Option(
+                      icon: Icons.notifications,
+                      title: 'SNOOZE',
+                      value: 'EVERY $_snooze MIN',
+                      onTap: _cycleSnooze,
+                    ),
+                  ),
+                  Expanded(
+                    child: _Option(
+                      icon: Icons.repeat,
+                      title: 'REPEAT',
+                      value: _repeat.label,
+                      onTap: _cycleRepeat,
+                    ),
+                  ),
                 ],
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close, color: Colors.green[200]),
-                  style: IconButton.styleFrom(
-                    fixedSize: const Size(80, 80),
-                    backgroundColor: _closeBg,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.close, color: Colors.green[200]),
+                    style: IconButton.styleFrom(
+                      fixedSize: const Size(76, 76),
+                      backgroundColor: _closeBg,
+                    ),
                   ),
-                ),
-                Text(
-                  'CHOOSE TIME',
-                  style: TextStyle(
-                    color: Colors.green[200],
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: Text(
+                      'CHOOSE TIME',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.green[200],
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
-                IconButton(
-                  onPressed: () {},
-                  icon: const Icon(Icons.check, color: Colors.black),
-                  style: IconButton.styleFrom(
-                    fixedSize: const Size(80, 80),
-                    backgroundColor: _confirmBg,
+                  IconButton(
+                    onPressed: _confirm,
+                    icon: const Icon(Icons.check, color: Colors.black),
+                    style: IconButton.styleFrom(
+                      fixedSize: const Size(76, 76),
+                      backgroundColor: _confirmBg,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -137,47 +214,75 @@ class _TimeWheelPageState extends State<TimeWheelPage> {
     );
   }
 
-  Widget _option(IconData glyph, String caption) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(glyph, color: Colors.green[200], size: 24),
-        const SizedBox(height: 4),
-        Text(
-          caption,
-          style: TextStyle(color: Colors.green[200], fontSize: 18),
-        ),
-      ],
-    );
-  }
-
   Widget _wheel({
-    required FixedExtentScrollController ctrl,
-    required List<int> values,
-    required Function(int) onSelect,
+    required FixedExtentScrollController controller,
+    required int count,
+    required ValueChanged<int> onSelect,
   }) {
     return SizedBox(
-      width: 70,
+      width: 96,
       child: ListWheelScrollView.useDelegate(
-        itemExtent: 80,
+        controller: controller,
+        itemExtent: 84,
         physics: const FixedExtentScrollPhysics(),
-        perspective: 0.005,
-        diameterRatio: 2.0,
+        perspective: 0.004,
+        diameterRatio: 2,
+        overAndUnderCenterOpacity: 0.35,
         onSelectedItemChanged: onSelect,
         childDelegate: ListWheelChildBuilderDelegate(
-          childCount: values.length,
-          builder: (context, index) {
-            return Center(
-              child: Text(
-                values[index].toString().padLeft(2, '0'),
-                style: const TextStyle(
-                  fontSize: 60,
-                  color: _mint,
-                  fontWeight: FontWeight.w600,
-                ),
+          childCount: count,
+          builder: (context, index) => Center(
+            child: Text(
+              index.toString().padLeft(2, '0'),
+              style: const TextStyle(
+                fontSize: 60,
+                color: _mint,
+                fontWeight: FontWeight.w600,
               ),
-            );
-          },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Option extends StatelessWidget {
+  const _Option({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.green[200], size: 26),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: TextStyle(color: Colors.green[200], fontSize: 17),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: _mintDim, fontSize: 14),
+            ),
+          ],
         ),
       ),
     );

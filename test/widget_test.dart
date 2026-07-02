@@ -1,22 +1,127 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:mfaaa/main.dart';
+import 'package:mfaaa/models/alarm.dart';
+import 'package:mfaaa/services/alarm_store.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+Future<void> _loadDigitalFont() async {
+  await (FontLoader('Digital')
+        ..addFont(rootBundle.load('assets/fonts/DS-DIGI.TTF')))
+      .load();
+}
+
+void _phoneView(WidgetTester tester, [Size size = const Size(1170, 2532)]) {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
 
 void main() {
-  testWidgets('dashboard renders the clock', (WidgetTester tester) async {
-    final loader = FontLoader('Digital')
-      ..addFont(rootBundle.load('assets/fonts/DS-DIGI.TTF'));
-    await loader.load();
+  setUpAll(_loadDigitalFont);
 
-    tester.view.physicalSize = const Size(1440, 3120);
-    tester.view.devicePixelRatio = 3.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets('dashboard renders without overflow on phone sizes', (tester) async {
+    for (final size in const [Size(1170, 2532), Size(1125, 2001)]) {
+      SharedPreferences.setMockInitialValues({});
+      _phoneView(tester, size);
 
-    await tester.pumpWidget(const AlarmApp());
+      final store = AlarmStore();
+      await tester.pumpWidget(AlarmApp(store: store));
+      await tester.pump();
+      await tester.pump();
 
-    expect(find.text('09:42'), findsWidgets);
-    expect(find.text('THE NEXT ALARM CLOCK IN 19 MIN'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      expect(find.textContaining('NO UPCOMING ALARMS'), findsOneWidget);
+      expect(find.text('NO ALARMS'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      store.dispose();
+    }
+  });
+
+  testWidgets('adding an alarm through the picker shows a card', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    _phoneView(tester);
+    final store = AlarmStore(clock: () => DateTime(2026, 7, 6, 8, 0));
+
+    await tester.pumpWidget(AlarmApp(store: store));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('CHOOSE TIME'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(store.alarms.length, 1);
+    expect(find.byIcon(Icons.play_arrow), findsOneWidget);
+    expect(find.textContaining('THE NEXT ALARM CLOCK IN'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    store.dispose();
+  });
+
+  testWidgets('toggling a card disables the alarm', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    _phoneView(tester);
+    final store = AlarmStore(clock: () => DateTime(2026, 7, 6, 8, 0));
+    await store.init();
+    await store.add(
+      const AlarmDraft(
+        hour: 9,
+        minute: 50,
+        sound: 'WAKE UP',
+        snoozeMinutes: 10,
+        repeat: AlarmRepeat.once,
+      ),
+    );
+
+    await tester.pumpWidget(AlarmApp(store: store));
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.play_arrow));
+    await tester.pump();
+
+    expect(store.alarms.first.enabled, false);
+    expect(find.byIcon(Icons.pause), findsOneWidget);
+    expect(find.textContaining('NO UPCOMING ALARMS'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    store.dispose();
+  });
+
+  testWidgets('timeline scrolls horizontally and is effectively infinite', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    _phoneView(tester);
+
+    final store = AlarmStore();
+    await tester.pumpWidget(AlarmApp(store: store));
+    await tester.pump();
+
+    final timeline = find.descendant(
+      of: find.byType(CustomScrollView),
+      matching: find.byType(Scrollable),
+    );
+    final position = tester.state<ScrollableState>(timeline).position;
+
+    final start = position.pixels;
+    await tester.drag(timeline, const Offset(-260, 0));
+    await tester.pump();
+    expect(position.pixels, greaterThan(start));
+
+    await tester.drag(timeline, const Offset(900, 0));
+    await tester.pump();
+    expect(position.pixels, lessThan(0));
+
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    store.dispose();
   });
 }
