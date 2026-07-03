@@ -72,11 +72,11 @@ class AlarmStore extends ChangeNotifier {
     final remaining = untilNext;
     if (remaining == null) return 'NO UPCOMING ALARMS — TAP + TO ADD';
     final minutes = remaining.inMinutes;
-    if (minutes < 1) return 'THE NEXT ALARM CLOCK IN LESS THAN A MIN';
-    if (minutes < 100) return 'THE NEXT ALARM CLOCK IN $minutes MIN';
+    if (minutes < 1) return 'THE NEXT ALARM IN LESS THAN A MIN';
+    if (minutes < 100) return 'THE NEXT ALARM IN $minutes MIN';
     final h = minutes ~/ 60;
     final m = minutes % 60;
-    return 'THE NEXT ALARM CLOCK IN $h H $m MIN';
+    return 'THE NEXT ALARM IN $h H $m MIN';
   }
 
   Future<void> init() async {

@@ -82,7 +82,8 @@ class Alarm {
       minute: json['minute'] as int,
       sound: json['sound'] as String? ?? 'WAKE UP',
       snoozeMinutes: json['snoozeMinutes'] as int? ?? 10,
-      repeat: AlarmRepeat.values.asNameMap()[json['repeat']] ?? AlarmRepeat.once,
+      repeat:
+          AlarmRepeat.values.asNameMap()[json['repeat']] ?? AlarmRepeat.once,
       enabled: json['enabled'] as bool? ?? true,
       snoozedUntil: snoozeMs == null
           ? null

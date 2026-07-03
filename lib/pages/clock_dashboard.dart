@@ -1,37 +1,81 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/alarm.dart';
 import '../services/alarm_store.dart';
+import '../widgets/tactile.dart';
 import 'time_wheel_page.dart';
 
 const _screen = Color(0xffa8c889);
 const _muted = Color(0xff69745f);
 const _dim = Color(0xff59644c);
-const _barGap = 9.0;
+const _barGap = 14.0;
 
-class ClockDashboard extends StatelessWidget {
+const _navTabs = [
+  (Icons.light_mode_outlined, 'Home', 'YOUR ALARMS, ALL IN ONE PLACE'),
+  (Icons.headphones_outlined, 'Focus', 'DISTRACTION-FREE TIMERS ARE COMING'),
+  (Icons.nightlight_outlined, 'Sleep', 'SLEEP TRACKING IS COMING'),
+  (Icons.people_outline, 'Crew', 'SHARED ALARMS WITH FRIENDS ARE COMING'),
+];
+
+class ClockDashboard extends StatefulWidget {
   const ClockDashboard({super.key});
 
+  @override
+  State<ClockDashboard> createState() => _ClockDashboardState();
+}
+
+class _ClockDashboardState extends State<ClockDashboard> {
   static const _week = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
+  int _selectedTab = 0;
+
+  static Route<AlarmDraft> _wheelRoute(Widget page) {
+    return PageRouteBuilder<AlarmDraft>(
+      transitionDuration: const Duration(milliseconds: 380),
+      reverseTransitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (_, _, _) => page,
+      transitionsBuilder: (_, animation, _, child) {
+        final eased = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: eased,
+          child: SlideTransition(
+            position: Tween(
+              begin: const Offset(0, 0.12),
+              end: Offset.zero,
+            ).animate(eased),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _addAlarm(BuildContext context) async {
+    HapticFeedback.lightImpact();
     final store = AlarmScope.of(context);
     final draft = await Navigator.push<AlarmDraft>(
       context,
-      MaterialPageRoute(builder: (_) => const TimeWheelPage()),
+      _wheelRoute(const TimeWheelPage()),
     );
     if (draft != null) await store.add(draft);
   }
 
   Future<void> _editAlarm(BuildContext context, Alarm alarm) async {
+    HapticFeedback.selectionClick();
     final store = AlarmScope.of(context);
     final draft = await Navigator.push<AlarmDraft>(
       context,
-      MaterialPageRoute(
-        builder: (_) => TimeWheelPage(
+      _wheelRoute(
+        TimeWheelPage(
           initial: AlarmDraft(
             hour: alarm.hour,
             minute: alarm.minute,
@@ -46,6 +90,7 @@ class ClockDashboard extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, Alarm alarm) async {
+    HapticFeedback.heavyImpact();
     final store = AlarmScope.of(context);
     final yes = await showDialog<bool>(
       context: context,
@@ -87,56 +132,33 @@ class ClockDashboard extends StatelessWidget {
       body: Column(
         children: [
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
-              child: _panel(store, topInset),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (var i = 0; i < _week.length; i++)
-                  Text(
-                    _week[i],
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: today == i + 1
-                          ? Colors.black
-                          : _dim.withValues(alpha: 0.3),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 150,
-            child: LayoutBuilder(
-              builder: (context, strip) {
-                final alarms = store.alarms;
-                final cardWidth = strip.maxWidth * 0.82;
-                if (alarms.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: _emptyCard(context),
-                  );
-                }
-                return ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  itemCount: alarms.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 12),
-                  itemBuilder: (_, i) => _AlarmCard(
-                    alarm: alarms[i],
-                    width: cardWidth,
-                    onToggle: () => store.toggle(alarms[i]),
-                    onEdit: () => _editAlarm(context, alarms[i]),
-                    onDelete: () => _confirmDelete(context, alarms[i]),
-                  ),
-                );
-              },
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              layoutBuilder: (current, previous) => Stack(
+                fit: StackFit.expand,
+                children: [...previous, ?current],
+              ),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween(
+                    begin: const Offset(0, 0.03),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              ),
+              child: KeyedSubtree(
+                key: ValueKey(_selectedTab),
+                child: _selectedTab == 0
+                    ? _homeBody(context, store, today, topInset)
+                    : Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+                        child: _placeholderPanel(_navTabs[_selectedTab]),
+                      ),
+              ),
             ),
           ),
           SafeArea(
@@ -147,6 +169,111 @@ class ClockDashboard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _homeBody(
+    BuildContext context,
+    AlarmStore store,
+    int today,
+    double topInset,
+  ) {
+    return Column(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+            child: _panel(store, topInset),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              for (var i = 0; i < _week.length; i++)
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.easeOut,
+                  style: TextStyle(
+                    fontFamily: 'Digital',
+                    fontSize: 20,
+                    color: today == i + 1
+                        ? Colors.black
+                        : _dim.withValues(alpha: 0.3),
+                  ),
+                  child: Text(_week[i]),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 150,
+          child: LayoutBuilder(
+            builder: (context, strip) {
+              final alarms = store.alarms;
+              final cardWidth = strip.maxWidth * 0.82;
+              if (alarms.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: _emptyCard(context),
+                );
+              }
+              return ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                itemCount: alarms.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (_, i) => _AlarmCard(
+                  alarm: alarms[i],
+                  width: cardWidth,
+                  onToggle: () {
+                    HapticFeedback.mediumImpact();
+                    store.toggle(alarms[i]);
+                  },
+                  onEdit: () => _editAlarm(context, alarms[i]),
+                  onDelete: () => _confirmDelete(context, alarms[i]),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _placeholderPanel((IconData, String, String) tab) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(35),
+          topRight: Radius.circular(35),
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(tab.$1, size: 72, color: _screen),
+            const SizedBox(height: 20),
+            Text(
+              tab.$2.toUpperCase(),
+              style: const TextStyle(fontSize: 34, color: _screen),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              tab.$3,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 15, color: _muted),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -169,24 +296,39 @@ class ClockDashboard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Flexible(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const _LiveClock(),
-                  Text(
-                    store.nextAlarmSubtitle,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      color: _muted,
-                      height: -4,
+              flex: 3,
+              child: LayoutBuilder(
+                builder: (context, box) => FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: SizedBox(
+                    width: box.maxWidth,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const _LiveClock(),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: Text(
+                            store.nextAlarmSubtitle,
+                            key: ValueKey(store.nextAlarmSubtitle),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              color: _muted,
+                              height: -4,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
+            const SizedBox(height: 16),
+            const Expanded(flex: 2, child: _StatsBoard()),
             const SizedBox(height: 12),
-            const SizedBox(height: 96, child: _InfiniteTimeline()),
+            const SizedBox(height: 72, child: _InfiniteTimeline()),
           ],
         ),
       ),
@@ -194,26 +336,29 @@ class ClockDashboard extends StatelessWidget {
   }
 
   Widget _emptyCard(BuildContext context) {
-    return DottedBorder(
-      color: Colors.grey,
-      strokeWidth: 2,
-      dashPattern: const [5, 5],
-      borderType: BorderType.RRect,
-      radius: const Radius.circular(6),
-      child: InkWell(
-        onTap: () => _addAlarm(context),
-        child: SizedBox(
-          width: double.infinity,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Text('NO ALARMS', style: TextStyle(fontSize: 42, color: _dim)),
-              SizedBox(height: 6),
-              Text(
-                'TAP HERE OR + TO SET ONE',
-                style: TextStyle(fontSize: 18, color: _muted),
-              ),
-            ],
+    return Tactile(
+      pressedScale: 0.98,
+      child: DottedBorder(
+        color: Colors.grey,
+        strokeWidth: 2,
+        dashPattern: const [5, 5],
+        borderType: BorderType.RRect,
+        radius: const Radius.circular(6),
+        child: InkWell(
+          onTap: () => _addAlarm(context),
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Text('NO ALARMS', style: TextStyle(fontSize: 42, color: _dim)),
+                SizedBox(height: 6),
+                Text(
+                  'TAP HERE OR + TO SET ONE',
+                  style: TextStyle(fontSize: 18, color: _muted),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -221,76 +366,131 @@ class ClockDashboard extends StatelessWidget {
   }
 
   Widget _dock(BuildContext context, AlarmStore store) {
-    final next = store.nextAlarm?.nextFire(DateTime.now());
-    final remaining = store.untilNext;
-    double? fraction;
-    if (remaining != null) {
-      final mins = remaining.inMinutes.clamp(0, 60);
-      fraction = 1 - mins / 60;
-    }
-
     return Row(
       children: [
-        _roundButton(
-          icon: Icons.calendar_month,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(16)),
-          ),
-          onTap: () {},
-        ),
-        const SizedBox(width: 12),
         Expanded(
-          child: Container(
-            height: 58,
-            decoration: const BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.all(Radius.circular(29)),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: Row(
-              children: [
-                _NowLabel(),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: CustomPaint(
-                      size: const Size(double.infinity, 22),
-                      painter: _DockTrackPainter(fraction),
-                    ),
-                  ),
-                ),
-                Text(
-                  next == null
-                      ? '--:--'
-                      : '${next.hour}:${next.minute.toString().padLeft(2, '0')}',
-                  style: const TextStyle(fontSize: 16, color: _screen),
-                ),
-              ],
-            ),
+          child: _NavBar(
+            selected: _selectedTab,
+            onSelect: (i) {
+              if (i != _selectedTab) {
+                HapticFeedback.selectionClick();
+                setState(() => _selectedTab = i);
+              }
+            },
           ),
         ),
-        const SizedBox(width: 12),
-        _roundButton(
-          icon: Icons.add,
-          shape: const CircleBorder(),
-          onTap: () => _addAlarm(context),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(scale: animation, child: child),
+            ),
+            child: _selectedTab == 0
+                ? Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: Tactile(
+                      pressedScale: 0.9,
+                      child: IconButton(
+                        onPressed: () => _addAlarm(context),
+                        icon: const Icon(Icons.add, color: _screen),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          fixedSize: const Size(64, 64),
+                          shape: const CircleBorder(),
+                        ),
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
         ),
       ],
     );
   }
+}
 
-  Widget _roundButton({
-    required IconData icon,
-    required OutlinedBorder shape,
-    required VoidCallback onTap,
-  }) {
-    return IconButton(
-      onPressed: onTap,
-      icon: Icon(icon, color: _screen),
-      style: IconButton.styleFrom(
-        backgroundColor: Colors.black,
-        fixedSize: const Size(58, 58),
-        shape: shape,
+class _NavBar extends StatelessWidget {
+  const _NavBar({required this.selected, required this.onSelect});
+
+  final int selected;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 64,
+      decoration: const BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.all(Radius.circular(32)),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          for (var i = 0; i < _navTabs.length; i++)
+            Expanded(
+              child: _NavItem(
+                icon: _navTabs[i].$1,
+                label: _navTabs[i].$2,
+                selected: selected == i,
+                onTap: () => onSelect(i),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final target = selected ? 1.0 : 0.0;
+
+    return Tactile(
+      pressedScale: 0.93,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: const BorderRadius.all(Radius.circular(28)),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: target, end: target),
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+          builder: (context, t, _) {
+            final color = Color.lerp(_muted, _screen, t)!;
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                color: _screen.withValues(alpha: 0.12 * t),
+                borderRadius: const BorderRadius.all(Radius.circular(28)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Transform.scale(
+                    scale: 1 + 0.12 * t,
+                    child: Icon(icon, size: 22, color: color),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(label, style: TextStyle(fontSize: 13, color: color)),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -317,67 +517,98 @@ class _AlarmCard extends StatelessWidget {
         ? alarm.sound
         : '${alarm.sound} • ${alarm.repeat.label}';
 
-    return DottedBorder(
-      color: Colors.grey,
-      strokeWidth: 2,
-      dashPattern: const [5, 5],
-      borderType: BorderType.RRect,
-      radius: const Radius.circular(6),
-      child: InkWell(
-        onTap: onEdit,
-        onLongPress: onDelete,
-        child: SizedBox(
-          width: width,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-            child: Opacity(
-              opacity: alarm.enabled ? 1 : 0.35,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 340),
+      curve: Curves.easeOutCubic,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(24 * (1 - t), 0),
+          child: child,
+        ),
+      ),
+      child: Tactile(
+        pressedScale: 0.975,
+        child: DottedBorder(
+          color: Colors.grey,
+          strokeWidth: 2,
+          dashPattern: const [5, 5],
+          borderType: BorderType.RRect,
+          radius: const Radius.circular(6),
+          child: InkWell(
+            onTap: onEdit,
+            onLongPress: onDelete,
+            child: SizedBox(
+              width: width,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOut,
+                  opacity: alarm.enabled ? 1 : 0.35,
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            alarm.timeLabel12,
-                            style: const TextStyle(
-                              fontSize: 54,
-                              color: Colors.black,
-                            ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                alarm.timeLabel12,
+                                style: const TextStyle(
+                                  fontSize: 54,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8, left: 2),
+                                child: Text(
+                                  alarm.meridiem,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8, left: 2),
-                            child: Text(
-                              alarm.meridiem,
-                              style: const TextStyle(
-                                fontSize: 16,
+                          IconButton(
+                            onPressed: onToggle,
+                            padding: EdgeInsets.zero,
+                            icon: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 220),
+                              switchInCurve: Curves.easeOutBack,
+                              switchOutCurve: Curves.easeIn,
+                              transitionBuilder: (child, animation) =>
+                                  ScaleTransition(
+                                    scale: animation,
+                                    child: FadeTransition(
+                                      opacity: animation,
+                                      child: child,
+                                    ),
+                                  ),
+                              child: Icon(
+                                alarm.enabled ? Icons.play_arrow : Icons.pause,
+                                key: ValueKey(alarm.enabled),
+                                size: 54,
                                 color: Colors.black,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      IconButton(
-                        onPressed: onToggle,
-                        padding: EdgeInsets.zero,
-                        icon: Icon(
-                          alarm.enabled ? Icons.play_arrow : Icons.pause,
-                          size: 54,
-                          color: Colors.black,
-                        ),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(fontSize: 18, color: _muted),
                       ),
                     ],
                   ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(fontSize: 18, color: _muted),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -387,13 +618,134 @@ class _AlarmCard extends StatelessWidget {
   }
 }
 
-class _NowLabel extends StatelessWidget {
+class _StatsBoard extends StatefulWidget {
+  const _StatsBoard();
+
+  @override
+  State<_StatsBoard> createState() => _StatsBoardState();
+}
+
+class _StatsBoardState extends State<_StatsBoard> {
+  late final List<(String, String, double)> _stats;
+
+  @override
+  void initState() {
+    super.initState();
+    final rng = Random(2026);
+    final screenMinutes = 150 + rng.nextInt(240);
+    final distracted = 15 + rng.nextInt(45);
+    final focus = 45 + rng.nextInt(50);
+    final sleep = 55 + rng.nextInt(43);
+    _stats = [
+      (
+        'SCREEN TIME',
+        '${screenMinutes ~/ 60}H ${(screenMinutes % 60).toString().padLeft(2, '0')}M',
+        screenMinutes / 720,
+      ),
+      ('DISTRACTED', '$distracted%', distracted / 100),
+      ('FOCUS SCORE', '$focus/100', focus / 100),
+      ('SLEEP SCORE', '$sleep/100', sleep / 100),
+    ];
+  }
+
+  static double _staggered(double t, int i) {
+    final start = i * 0.13;
+    return Curves.easeOutCubic.transform(((t - start) / 0.61).clamp(0.0, 1.0));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    return Text(
-      '${now.hour}:${now.minute.toString().padLeft(2, '0')}',
-      style: const TextStyle(fontSize: 16, color: _screen),
+    return LayoutBuilder(
+      builder: (context, box) {
+        final rowSpace = box.maxHeight / _stats.length;
+        final fontSize = ((rowSpace - 12) / 1.4).clamp(9.0, 17.0);
+        final barHeight = (rowSpace * 0.2).clamp(4.0, 7.0);
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 1400),
+          builder: (context, t, _) => Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              for (var i = 0; i < _stats.length; i++)
+                _StatRow(
+                  stat: _stats[i],
+                  reveal: _staggered(t, i),
+                  fontSize: fontSize,
+                  barHeight: barHeight,
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StatRow extends StatelessWidget {
+  const _StatRow({
+    required this.stat,
+    required this.reveal,
+    required this.fontSize,
+    required this.barHeight,
+  });
+
+  final (String, String, double) stat;
+  final double reveal;
+  final double fontSize;
+  final double barHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: reveal,
+      child: Transform.translate(
+        offset: Offset(0, 10 * (1 - reveal)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  stat.$1,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    color: _muted,
+                    height: 1.1,
+                  ),
+                ),
+                Text(
+                  stat.$2,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    color: _screen,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            ClipRRect(
+              borderRadius: const BorderRadius.all(Radius.circular(3)),
+              child: SizedBox(
+                height: barHeight,
+                width: double.infinity,
+                child: ColoredBox(
+                  color: _dim.withValues(alpha: 0.15),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: (stat.$3 * reveal).clamp(0.0, 1.0),
+                      heightFactor: 1,
+                      child: const ColoredBox(color: _screen),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -433,44 +785,56 @@ class _LiveClockState extends State<_LiveClock> {
   @override
   Widget build(BuildContext context) {
     const bgStr = '88:88';
+    final hour12 = _now.hour % 12 == 0 ? 12 : _now.hour % 12;
     final fgStr =
-        '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}';
+        '${hour12.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}';
+    final meridiem = _now.hour < 12 ? 'AM' : 'PM';
 
     return FittedBox(
       fit: BoxFit.fitWidth,
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: List.generate(bgStr.length, (i) {
-          final isColon = bgStr[i] == ':';
-          final isActive = !isColon || _showColon;
-          final isOne = fgStr[i] == '1';
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ...List.generate(bgStr.length, (i) {
+            final isColon = bgStr[i] == ':';
+            final isActive = !isColon || _showColon;
+            final isOne = fgStr[i] == '1';
 
-          return Stack(
-            alignment: Alignment.centerRight,
-            children: [
-              Text(
-                bgStr[i],
-                style: TextStyle(
-                  fontSize: 150,
-                  color: _dim.withValues(alpha: 0.27),
-                  height: 1.6,
-                ),
-              ),
-              Transform.translate(
-                // fix for the "1" being slightly to the left
-                offset: isOne ? const Offset(7, 0) : Offset.zero,
-                child: Text(
-                  fgStr[i],
+            return Stack(
+              alignment: Alignment.centerRight,
+              children: [
+                Text(
+                  bgStr[i],
                   style: TextStyle(
                     fontSize: 150,
-                    color: isActive ? _screen : Colors.transparent,
-                    height: 1,
+                    color: _dim.withValues(alpha: 0.15),
+                    height: 1.6,
                   ),
                 ),
-              ),
-            ],
-          );
-        }),
+                Transform.translate(
+                  // fix for the "1" being slightly to the left
+                  offset: isOne ? const Offset(7, 0) : Offset.zero,
+                  child: Text(
+                    fgStr[i],
+                    style: TextStyle(
+                      fontSize: 150,
+                      color: isActive ? _screen : Colors.transparent,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
+          Padding(
+            padding: const EdgeInsets.only(left: 6, top: 52),
+            child: Text(
+              meridiem,
+              style: const TextStyle(fontSize: 34, color: _screen),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -486,11 +850,21 @@ class _InfiniteTimeline extends StatefulWidget {
 class _InfiniteTimelineState extends State<_InfiniteTimeline> {
   final _centerKey = UniqueKey();
   final _controller = ScrollController();
+  double _travelled = 0;
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  bool _tick(ScrollUpdateNotification note) {
+    _travelled += (note.scrollDelta ?? 0).abs();
+    if (_travelled >= _barGap * 5) {
+      _travelled = 0;
+      HapticFeedback.selectionClick();
+    }
+    return false;
   }
 
   @override
@@ -501,26 +875,29 @@ class _InfiniteTimelineState extends State<_InfiniteTimeline> {
         return Stack(
           clipBehavior: Clip.none,
           children: [
-            CustomScrollView(
-              controller: _controller,
-              scrollDirection: Axis.horizontal,
-              center: _centerKey,
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverFixedExtentList(
-                  itemExtent: _barGap,
-                  delegate: SliverChildBuilderDelegate(
-                    (context, i) => _Bar(dot: (i + 1) % 5 == 0),
+            NotificationListener<ScrollUpdateNotification>(
+              onNotification: _tick,
+              child: CustomScrollView(
+                controller: _controller,
+                scrollDirection: Axis.horizontal,
+                center: _centerKey,
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  SliverFixedExtentList(
+                    itemExtent: _barGap,
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => _Bar(dot: (i + 1) % 5 == 0),
+                    ),
                   ),
-                ),
-                SliverFixedExtentList(
-                  key: _centerKey,
-                  itemExtent: _barGap,
-                  delegate: SliverChildBuilderDelegate(
-                    (context, i) => _Bar(dot: i % 5 == 0),
+                  SliverFixedExtentList(
+                    key: _centerKey,
+                    itemExtent: _barGap,
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => _Bar(dot: i % 5 == 0),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             Positioned(
               left: 0,
@@ -611,42 +988,4 @@ class _MarkerPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MarkerPainter old) => false;
-}
-
-class _DockTrackPainter extends CustomPainter {
-  const _DockTrackPainter(this.fraction);
-
-  final double? fraction;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final mid = size.height / 2;
-    final brush = Paint()
-      ..color = _muted
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
-    const ticks = 18;
-    final gap = size.width / (ticks - 1);
-    for (var n = 0; n < ticks; n++) {
-      canvas.drawLine(
-        Offset(n * gap, mid - 3),
-        Offset(n * gap, mid + 3),
-        brush,
-      );
-    }
-
-    final f = fraction;
-    if (f != null) {
-      brush
-        ..color = Colors.red
-        ..strokeWidth = 2.5;
-      final x = size.width * f.clamp(0.02, 0.98);
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), brush);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DockTrackPainter old) =>
-      old.fraction != fraction;
 }

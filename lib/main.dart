@@ -62,9 +62,25 @@ class _AlarmAppState extends State<AlarmApp> {
     _ringOpen = true;
     nav
         .push(
-          MaterialPageRoute(
+          PageRouteBuilder(
             fullscreenDialog: true,
-            builder: (_) => AlarmRingPage(alarm: alarm),
+            transitionDuration: const Duration(milliseconds: 420),
+            reverseTransitionDuration: const Duration(milliseconds: 300),
+            pageBuilder: (_, _, _) => AlarmRingPage(alarm: alarm),
+            transitionsBuilder: (_, animation, _, child) {
+              final eased = CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+                reverseCurve: Curves.easeInCubic,
+              );
+              return FadeTransition(
+                opacity: eased,
+                child: ScaleTransition(
+                  scale: Tween(begin: 1.08, end: 1.0).animate(eased),
+                  child: child,
+                ),
+              );
+            },
           ),
         )
         .whenComplete(() => _ringOpen = false);

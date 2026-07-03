@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/alarm.dart';
+import '../widgets/tactile.dart';
 
 const _mint = Color(0xffa8c889);
 const _mintDim = Color(0xff69745f);
@@ -65,24 +67,32 @@ class _TimeWheelPageState extends State<TimeWheelPage> {
   }
 
   void _cycleSound() {
+    HapticFeedback.selectionClick();
     final i = _sounds.indexOf(_sound);
     setState(() => _sound = _sounds[(i + 1) % _sounds.length]);
   }
 
   void _cycleSnooze() {
+    HapticFeedback.selectionClick();
     final i = _snoozes.indexOf(_snooze);
     setState(() => _snooze = _snoozes[(i + 1) % _snoozes.length]);
   }
 
   void _cycleRepeat() {
+    HapticFeedback.selectionClick();
     final i = AlarmRepeat.values.indexOf(_repeat);
     setState(
-      () => _repeat =
-          AlarmRepeat.values[(i + 1) % AlarmRepeat.values.length],
+      () => _repeat = AlarmRepeat.values[(i + 1) % AlarmRepeat.values.length],
     );
   }
 
+  void _dismiss() {
+    HapticFeedback.lightImpact();
+    Navigator.pop(context);
+  }
+
   void _confirm() {
+    HapticFeedback.mediumImpact();
     Navigator.pop(
       context,
       AlarmDraft(
@@ -178,12 +188,15 @@ class _TimeWheelPageState extends State<TimeWheelPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.close, color: Colors.green[200]),
-                    style: IconButton.styleFrom(
-                      fixedSize: const Size(76, 76),
-                      backgroundColor: _closeBg,
+                  Tactile(
+                    pressedScale: 0.92,
+                    child: IconButton(
+                      onPressed: _dismiss,
+                      icon: Icon(Icons.close, color: Colors.green[200]),
+                      style: IconButton.styleFrom(
+                        fixedSize: const Size(76, 76),
+                        backgroundColor: _closeBg,
+                      ),
                     ),
                   ),
                   Flexible(
@@ -197,12 +210,15 @@ class _TimeWheelPageState extends State<TimeWheelPage> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: _confirm,
-                    icon: const Icon(Icons.check, color: Colors.black),
-                    style: IconButton.styleFrom(
-                      fixedSize: const Size(76, 76),
-                      backgroundColor: _confirmBg,
+                  Tactile(
+                    pressedScale: 0.92,
+                    child: IconButton(
+                      onPressed: _confirm,
+                      icon: const Icon(Icons.check, color: Colors.black),
+                      style: IconButton.styleFrom(
+                        fixedSize: const Size(76, 76),
+                        backgroundColor: _confirmBg,
+                      ),
                     ),
                   ),
                 ],
@@ -228,7 +244,10 @@ class _TimeWheelPageState extends State<TimeWheelPage> {
         perspective: 0.004,
         diameterRatio: 2,
         overAndUnderCenterOpacity: 0.35,
-        onSelectedItemChanged: onSelect,
+        onSelectedItemChanged: (value) {
+          HapticFeedback.selectionClick();
+          onSelect(value);
+        },
         childDelegate: ListWheelChildBuilderDelegate(
           childCount: count,
           builder: (context, index) => Center(
@@ -262,27 +281,46 @@ class _Option extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.green[200], size: 26),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              style: TextStyle(color: Colors.green[200], fontSize: 17),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              value,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: _mintDim, fontSize: 14),
-            ),
-          ],
+    return Tactile(
+      pressedScale: 0.94,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.green[200], size: 26),
+              const SizedBox(height: 6),
+              Text(
+                title,
+                style: TextStyle(color: Colors.green[200], fontSize: 17),
+              ),
+              const SizedBox(height: 2),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween(
+                      begin: const Offset(0, 0.4),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                ),
+                child: Text(
+                  value,
+                  key: ValueKey(value),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: _mintDim, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

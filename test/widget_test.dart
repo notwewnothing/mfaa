@@ -7,9 +7,9 @@ import 'package:mfaaa/services/alarm_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> _loadDigitalFont() async {
-  await (FontLoader('Digital')
-        ..addFont(rootBundle.load('assets/fonts/DS-DIGI.TTF')))
-      .load();
+  await (FontLoader(
+    'Digital',
+  )..addFont(rootBundle.load('assets/fonts/DS-DIGI.TTF'))).load();
 }
 
 void _phoneView(WidgetTester tester, [Size size = const Size(1170, 2532)]) {
@@ -22,7 +22,9 @@ void _phoneView(WidgetTester tester, [Size size = const Size(1170, 2532)]) {
 void main() {
   setUpAll(_loadDigitalFont);
 
-  testWidgets('dashboard renders without overflow on phone sizes', (tester) async {
+  testWidgets('dashboard renders without overflow on phone sizes', (
+    tester,
+  ) async {
     for (final size in const [Size(1170, 2532), Size(1125, 2001)]) {
       SharedPreferences.setMockInitialValues({});
       _phoneView(tester, size);
@@ -41,7 +43,9 @@ void main() {
     }
   });
 
-  testWidgets('adding an alarm through the picker shows a card', (tester) async {
+  testWidgets('adding an alarm through the picker shows a card', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     _phoneView(tester);
     final store = AlarmStore(clock: () => DateTime(2026, 7, 6, 8, 0));
@@ -61,7 +65,7 @@ void main() {
 
     expect(store.alarms.length, 1);
     expect(find.byIcon(Icons.play_arrow), findsOneWidget);
-    expect(find.textContaining('THE NEXT ALARM CLOCK IN'), findsOneWidget);
+    expect(find.textContaining('THE NEXT ALARM IN'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -97,7 +101,9 @@ void main() {
     store.dispose();
   });
 
-  testWidgets('timeline scrolls horizontally and is effectively infinite', (tester) async {
+  testWidgets('timeline scrolls horizontally and is effectively infinite', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     _phoneView(tester);
 

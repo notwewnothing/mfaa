@@ -126,11 +126,7 @@ class NotificationService implements AlarmScheduler {
           match: DateTimeComponents.time,
         );
       case AlarmRepeat.weekdays:
-        for (
-          var day = DateTime.monday;
-          day <= DateTime.friday;
-          day++
-        ) {
+        for (var day = DateTime.monday; day <= DateTime.friday; day++) {
           var at = _nextWallClock(now, alarm.hour, alarm.minute);
           while (at.weekday != day) {
             at = at.add(const Duration(days: 1));

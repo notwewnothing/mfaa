@@ -82,7 +82,7 @@ void main() {
       await store.init();
       final alarm = await store.add(draft);
       expect(store.alarms.length, 1);
-      expect(store.nextAlarmSubtitle, 'THE NEXT ALARM CLOCK IN 1 H 50 MIN');
+      expect(store.nextAlarmSubtitle, 'THE NEXT ALARM IN 1 H 50 MIN');
 
       await store.toggle(alarm);
       expect(store.nextAlarm, isNull);
@@ -115,7 +115,7 @@ void main() {
           repeat: AlarmRepeat.once,
         ),
       );
-      expect(store.nextAlarmSubtitle, 'THE NEXT ALARM CLOCK IN 2 H 30 MIN');
+      expect(store.nextAlarmSubtitle, 'THE NEXT ALARM IN 2 H 30 MIN');
       store.dispose();
     });
 
