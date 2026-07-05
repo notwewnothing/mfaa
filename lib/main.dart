@@ -5,6 +5,7 @@ import 'pages/alarm_ring_page.dart';
 import 'pages/clock_dashboard.dart';
 import 'services/alarm_store.dart';
 import 'services/notification_service.dart';
+import 'services/session_store.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,9 +13,10 @@ void main() {
 }
 
 class AlarmApp extends StatefulWidget {
-  const AlarmApp({super.key, this.store});
+  const AlarmApp({super.key, this.store, this.sessionStore});
 
   final AlarmStore? store;
+  final SessionStore? sessionStore;
 
   @override
   State<AlarmApp> createState() => _AlarmAppState();
@@ -23,6 +25,7 @@ class AlarmApp extends StatefulWidget {
 class _AlarmAppState extends State<AlarmApp> {
   final _navigator = GlobalKey<NavigatorState>();
   late final AlarmStore _store;
+  late final SessionStore _sessions;
   NotificationService? _notifications;
   bool _ringOpen = false;
 
@@ -36,6 +39,7 @@ class _AlarmAppState extends State<AlarmApp> {
       _notifications = NotificationService(onAlarmTap: _openRingById);
       _store = AlarmStore(scheduler: _notifications);
     }
+    _sessions = widget.sessionStore ?? SessionStore();
     _store.onRing = _openRing;
     _bootstrap();
   }
@@ -43,6 +47,7 @@ class _AlarmAppState extends State<AlarmApp> {
   Future<void> _bootstrap() async {
     await _notifications?.init();
     if (!_store.isLoaded) await _store.init();
+    if (!_sessions.isLoaded) await _sessions.init();
     final launchId = await _notifications?.launchedByAlarm();
     if (launchId != null) _openRingById(launchId);
   }
@@ -90,6 +95,7 @@ class _AlarmAppState extends State<AlarmApp> {
   void dispose() {
     _store.onRing = null;
     if (widget.store == null) _store.dispose();
+    if (widget.sessionStore == null) _sessions.dispose();
     super.dispose();
   }
 
@@ -97,19 +103,22 @@ class _AlarmAppState extends State<AlarmApp> {
   Widget build(BuildContext context) {
     return AlarmScope(
       store: _store,
-      child: MaterialApp(
-        title: 'Alarm Clock',
-        debugShowCheckedModeBanner: false,
-        navigatorKey: _navigator,
-        theme: ThemeData(
-          fontFamily: 'Digital',
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xffa8c889),
-            brightness: Brightness.dark,
+      child: SessionScope(
+        store: _sessions,
+        child: MaterialApp(
+          title: 'Alarm Clock',
+          debugShowCheckedModeBanner: false,
+          navigatorKey: _navigator,
+          theme: ThemeData(
+            fontFamily: 'Digital',
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xffa8c889),
+              brightness: Brightness.dark,
+            ),
+            useMaterial3: true,
           ),
-          useMaterial3: true,
+          home: const ClockDashboard(),
         ),
-        home: const ClockDashboard(),
       ),
     );
   }

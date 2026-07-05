@@ -119,37 +119,39 @@ void main() {
       store.dispose();
     });
 
-    test('ticker fires onRing at alarm time and once-alarm stops after stop',
-        () {
-      fakeAsync((async) {
-        SharedPreferences.setMockInitialValues({});
-        var now = DateTime(2026, 7, 6, 9, 48, 30);
-        final store = AlarmStore(clock: () => now);
-        store.init();
-        async.flushMicrotasks();
+    test(
+      'ticker fires onRing at alarm time and once-alarm stops after stop',
+      () {
+        fakeAsync((async) {
+          SharedPreferences.setMockInitialValues({});
+          var now = DateTime(2026, 7, 6, 9, 48, 30);
+          final store = AlarmStore(clock: () => now);
+          store.init();
+          async.flushMicrotasks();
 
-        store.add(draft);
-        async.flushMicrotasks();
+          store.add(draft);
+          async.flushMicrotasks();
 
-        Alarm? rang;
-        store.onRing = (alarm) => rang = alarm;
+          Alarm? rang;
+          store.onRing = (alarm) => rang = alarm;
 
-        now = now.add(const Duration(minutes: 1));
-        async.elapse(const Duration(seconds: 1));
-        expect(rang, isNull);
+          now = now.add(const Duration(minutes: 1));
+          async.elapse(const Duration(seconds: 1));
+          expect(rang, isNull);
 
-        now = now.add(const Duration(minutes: 1, seconds: 30));
-        async.elapse(const Duration(seconds: 1));
-        expect(rang, isNotNull);
-        expect(rang!.hour, 9);
-        expect(rang!.minute, 50);
+          now = now.add(const Duration(minutes: 1, seconds: 30));
+          async.elapse(const Duration(seconds: 1));
+          expect(rang, isNotNull);
+          expect(rang!.hour, 9);
+          expect(rang!.minute, 50);
 
-        store.stopRinging(rang!);
-        async.flushMicrotasks();
-        expect(store.nextAlarm, isNull);
-        store.dispose();
-      });
-    });
+          store.stopRinging(rang!);
+          async.flushMicrotasks();
+          expect(store.nextAlarm, isNull);
+          store.dispose();
+        });
+      },
+    );
 
     test('snooze reschedules and fires again', () {
       fakeAsync((async) {

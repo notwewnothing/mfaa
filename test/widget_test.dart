@@ -101,6 +101,94 @@ void main() {
     store.dispose();
   });
 
+  testWidgets('focus tab shows score, shortcuts and starts a session', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    _phoneView(tester);
+    final store = AlarmStore(clock: () => DateTime(2026, 7, 6, 8, 0));
+
+    await tester.pumpWidget(AlarmApp(store: store));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('Focus'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('FOCUS SCORE'), findsOneWidget);
+    expect(find.text('DEEP FOCUS'), findsOneWidget);
+    expect(find.text('SHORTCUTS'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(IconButton),
+        matching: find.byIcon(Icons.play_arrow),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('FOCUS SESSION'), findsOneWidget);
+    expect(find.text('BLOCK APPS'), findsOneWidget);
+    expect(find.text('ACTIVATE STRICT MODE'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.textContaining('29:5'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.stop));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('FOCUS SCORE'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    store.dispose();
+  });
+
+  testWidgets('sleep tab renders and session adds a task', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    _phoneView(tester);
+    final store = AlarmStore(clock: () => DateTime(2026, 7, 6, 8, 0));
+
+    await tester.pumpWidget(AlarmApp(store: store));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('Sleep'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('SLEEP SCORE'), findsOneWidget);
+    expect(find.text('DEEP SLEEP'), findsOneWidget);
+    expect(find.text('NO ALARM'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(IconButton),
+        matching: find.byIcon(Icons.play_arrow),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('SLEEP SESSION'), findsOneWidget);
+
+    await tester.tap(find.text('ADD TASK'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'WIND DOWN');
+    await tester.tap(find.text('ADD'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('WIND DOWN'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    store.dispose();
+  });
+
   testWidgets('timeline scrolls horizontally and is effectively infinite', (
     tester,
   ) async {

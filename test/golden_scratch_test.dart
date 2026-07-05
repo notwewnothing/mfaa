@@ -8,7 +8,9 @@ import 'package:mfaaa/services/alarm_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> _fonts() async {
-  await (FontLoader('Digital')..addFont(rootBundle.load('assets/fonts/DS-DIGI.TTF'))).load();
+  await (FontLoader(
+    'Digital',
+  )..addFont(rootBundle.load('assets/fonts/DS-DIGI.TTF'))).load();
   try {
     final b = await rootBundle.load('fonts/MaterialIcons-Regular.otf');
     await (FontLoader('MaterialIcons')..addFont(Future.value(b))).load();
@@ -22,10 +24,24 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final store = AlarmStore(clock: () => DateTime(2026, 7, 2, 9, 40, 30));
     await store.init();
-    await store.add(const AlarmDraft(
-      hour: 9, minute: 50, sound: 'KIND OF BLUE', snoozeMinutes: 10, repeat: AlarmRepeat.once));
-    await store.add(const AlarmDraft(
-      hour: 10, minute: 15, sound: 'WAKE UP', snoozeMinutes: 10, repeat: AlarmRepeat.daily));
+    await store.add(
+      const AlarmDraft(
+        hour: 9,
+        minute: 50,
+        sound: 'KIND OF BLUE',
+        snoozeMinutes: 10,
+        repeat: AlarmRepeat.once,
+      ),
+    );
+    await store.add(
+      const AlarmDraft(
+        hour: 10,
+        minute: 15,
+        sound: 'WAKE UP',
+        snoozeMinutes: 10,
+        repeat: AlarmRepeat.daily,
+      ),
+    );
     return store;
   }
 
@@ -45,7 +61,10 @@ void main() {
     await t.pump();
     await t.pump(const Duration(milliseconds: 100));
     expect(t.takeException(), isNull);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/$f'));
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/$f'),
+    );
     await t.pumpWidget(const SizedBox.shrink());
     store.dispose();
   }
@@ -66,7 +85,10 @@ void main() {
     await t.pump();
     await t.pump(const Duration(milliseconds: 500));
     expect(t.takeException(), isNull);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/picker.png'));
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/picker.png'),
+    );
     await t.pumpWidget(const SizedBox.shrink());
     store.dispose();
   });
@@ -78,17 +100,22 @@ void main() {
     addTearDown(t.view.resetDevicePixelRatio);
     final store = await seeded();
     final alarm = store.alarms.first;
-    await t.pumpWidget(AlarmScope(
-      store: store,
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(fontFamily: 'Digital', useMaterial3: true),
-        home: AlarmRingPage(alarm: alarm),
+    await t.pumpWidget(
+      AlarmScope(
+        store: store,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(fontFamily: 'Digital', useMaterial3: true),
+          home: AlarmRingPage(alarm: alarm),
+        ),
       ),
-    ));
+    );
     await t.pump(const Duration(milliseconds: 100));
     expect(t.takeException(), isNull);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/ring.png'));
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/ring.png'),
+    );
     await t.pumpWidget(const SizedBox.shrink());
     store.dispose();
   });

@@ -1,13 +1,19 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/alarm.dart';
+import '../models/session.dart';
 import '../services/alarm_store.dart';
+import '../services/session_store.dart';
+import '../widgets/slide_up_route.dart';
 import '../widgets/tactile.dart';
+import 'session_page.dart';
+import 'session_tabs.dart';
 import 'time_wheel_page.dart';
 
 const _screen = Color(0xffa8c889);
@@ -34,37 +40,12 @@ class _ClockDashboardState extends State<ClockDashboard> {
 
   int _selectedTab = 0;
 
-  static Route<AlarmDraft> _wheelRoute(Widget page) {
-    return PageRouteBuilder<AlarmDraft>(
-      transitionDuration: const Duration(milliseconds: 380),
-      reverseTransitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (_, _, _) => page,
-      transitionsBuilder: (_, animation, _, child) {
-        final eased = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
-        return FadeTransition(
-          opacity: eased,
-          child: SlideTransition(
-            position: Tween(
-              begin: const Offset(0, 0.12),
-              end: Offset.zero,
-            ).animate(eased),
-            child: child,
-          ),
-        );
-      },
-    );
-  }
-
   Future<void> _addAlarm(BuildContext context) async {
     HapticFeedback.lightImpact();
     final store = AlarmScope.of(context);
     final draft = await Navigator.push<AlarmDraft>(
       context,
-      _wheelRoute(const TimeWheelPage()),
+      slideUpRoute<AlarmDraft>(const TimeWheelPage()),
     );
     if (draft != null) await store.add(draft);
   }
@@ -74,7 +55,7 @@ class _ClockDashboardState extends State<ClockDashboard> {
     final store = AlarmScope.of(context);
     final draft = await Navigator.push<AlarmDraft>(
       context,
-      _wheelRoute(
+      slideUpRoute<AlarmDraft>(
         TimeWheelPage(
           initial: AlarmDraft(
             hour: alarm.hour,
@@ -152,12 +133,21 @@ class _ClockDashboardState extends State<ClockDashboard> {
               ),
               child: KeyedSubtree(
                 key: ValueKey(_selectedTab),
-                child: _selectedTab == 0
-                    ? _homeBody(context, store, today, topInset)
-                    : Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
-                        child: _placeholderPanel(_navTabs[_selectedTab]),
-                      ),
+                child: switch (_selectedTab) {
+                  0 => _homeBody(context, store, today, topInset),
+                  1 => const Padding(
+                    padding: EdgeInsets.fromLTRB(10, 10, 10, 6),
+                    child: FocusPage(),
+                  ),
+                  2 => const Padding(
+                    padding: EdgeInsets.fromLTRB(10, 10, 10, 6),
+                    child: SleepPage(),
+                  ),
+                  _ => Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+                    child: _placeholderPanel(_navTabs[_selectedTab]),
+                  ),
+                },
               ),
             ),
           ),
@@ -365,7 +355,23 @@ class _ClockDashboardState extends State<ClockDashboard> {
     );
   }
 
+  void _startSession(BuildContext context, SessionKind kind) {
+    HapticFeedback.mediumImpact();
+    final store = SessionScope.of(context);
+    Navigator.push(
+      context,
+      slideUpRoute(SessionPage(kind: kind, config: store.lastConfig(kind))),
+    );
+  }
+
   Widget _dock(BuildContext context, AlarmStore store) {
+    final action = switch (_selectedTab) {
+      0 => (Icons.add, () => _addAlarm(context)),
+      1 => (Icons.play_arrow, () => _startSession(context, SessionKind.focus)),
+      2 => (Icons.play_arrow, () => _startSession(context, SessionKind.sleep)),
+      _ => null,
+    };
+
     return Row(
       children: [
         Expanded(
@@ -388,14 +394,15 @@ class _ClockDashboardState extends State<ClockDashboard> {
               opacity: animation,
               child: ScaleTransition(scale: animation, child: child),
             ),
-            child: _selectedTab == 0
+            child: action != null
                 ? Padding(
+                    key: ValueKey(action.$1),
                     padding: const EdgeInsets.only(left: 12),
                     child: Tactile(
                       pressedScale: 0.9,
                       child: IconButton(
-                        onPressed: () => _addAlarm(context),
-                        icon: const Icon(Icons.add, color: _screen),
+                        onPressed: action.$2,
+                        icon: Icon(action.$1, color: _screen),
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.black,
                           fixedSize: const Size(64, 64),
@@ -541,6 +548,7 @@ class _AlarmCard extends StatelessWidget {
             onLongPress: onDelete,
             child: SizedBox(
               width: width,
+
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
                 child: AnimatedOpacity(
@@ -626,27 +634,7 @@ class _StatsBoard extends StatefulWidget {
 }
 
 class _StatsBoardState extends State<_StatsBoard> {
-  late final List<(String, String, double)> _stats;
-
-  @override
-  void initState() {
-    super.initState();
-    final rng = Random(2026);
-    final screenMinutes = 150 + rng.nextInt(240);
-    final distracted = 15 + rng.nextInt(45);
-    final focus = 45 + rng.nextInt(50);
-    final sleep = 55 + rng.nextInt(43);
-    _stats = [
-      (
-        'SCREEN TIME',
-        '${screenMinutes ~/ 60}H ${(screenMinutes % 60).toString().padLeft(2, '0')}M',
-        screenMinutes / 720,
-      ),
-      ('DISTRACTED', '$distracted%', distracted / 100),
-      ('FOCUS SCORE', '$focus/100', focus / 100),
-      ('SLEEP SCORE', '$sleep/100', sleep / 100),
-    ];
-  }
+  late final int _screenMinutes = 150 + Random(2026).nextInt(240);
 
   static double _staggered(double t, int i) {
     final start = i * 0.13;
@@ -655,9 +643,28 @@ class _StatsBoardState extends State<_StatsBoard> {
 
   @override
   Widget build(BuildContext context) {
+    final sessions = SessionScope.of(context);
+    final stats = <(String, String, double)>[
+      (
+        'SCREEN TIME',
+        '${_screenMinutes ~/ 60}H ${(_screenMinutes % 60).toString().padLeft(2, '0')}M',
+        _screenMinutes / 720,
+      ),
+      (
+        'DISTRACTED',
+        '${sessions.distractedPct}%',
+        sessions.distractedPct / 100,
+      ),
+      ('FOCUS SCORE', '${sessions.focusScore}/100', sessions.focusScore / 100),
+      ('SLEEP SCORE', '${sessions.sleepScore}/100', sessions.sleepScore / 100),
+    ];
+    return _board(stats);
+  }
+
+  Widget _board(List<(String, String, double)> stats) {
     return LayoutBuilder(
       builder: (context, box) {
-        final rowSpace = box.maxHeight / _stats.length;
+        final rowSpace = box.maxHeight / stats.length;
         final fontSize = ((rowSpace - 12) / 1.4).clamp(9.0, 17.0);
         final barHeight = (rowSpace * 0.2).clamp(4.0, 7.0);
         return TweenAnimationBuilder<double>(
@@ -666,9 +673,9 @@ class _StatsBoardState extends State<_StatsBoard> {
           builder: (context, t, _) => Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              for (var i = 0; i < _stats.length; i++)
+              for (var i = 0; i < stats.length; i++)
                 _StatRow(
-                  stat: _stats[i],
+                  stat: stats[i],
                   reveal: _staggered(t, i),
                   fontSize: fontSize,
                   barHeight: barHeight,
@@ -752,7 +759,6 @@ class _StatRow extends StatelessWidget {
 
 class _LiveClock extends StatefulWidget {
   const _LiveClock();
-
   @override
   State<_LiveClock> createState() => _LiveClockState();
 }
