@@ -19,8 +19,8 @@ class SessionStore extends ChangeNotifier {
   final Map<String, DayStats> _days = {};
   final Map<SessionKind, SessionConfig> _lastConfig = {
     SessionKind.focus: const SessionConfig(
-      mode: SessionMode.timer,
-      minutes: 30,
+      mode: SessionMode.alarm,
+      minutes: 420,
     ),
     SessionKind.sleep: const SessionConfig(
       mode: SessionMode.endless,

@@ -57,7 +57,12 @@ class _TimerSheetState extends State<_TimerSheet> {
 
   List<SessionMode> get _modes => widget.kind == SessionKind.focus
       ? SessionMode.values
-      : [SessionMode.endless, SessionMode.timer];
+      : [SessionMode.endless, SessionMode.alarm];
+
+  late int _alarmHour;
+  late int _alarmMinute;
+  late final FixedExtentScrollController _hourWheel;
+  late final FixedExtentScrollController _minuteWheel;
 
   @override
   void initState() {
@@ -65,9 +70,13 @@ class _TimerSheetState extends State<_TimerSheet> {
     _mode = _modes.contains(widget.initial.mode)
         ? widget.initial.mode
         : _modes.first;
-    _timerMin = widget.initial.mode == SessionMode.timer
+    _timerMin = widget.initial.mode == SessionMode.alarm
         ? widget.initial.minutes
-        : 30;
+        : 420;
+    _alarmHour = _timerMin ~/ 60;
+    _alarmMinute = _timerMin % 60;
+    _hourWheel = FixedExtentScrollController(initialItem: _alarmHour);
+    _minuteWheel = FixedExtentScrollController(initialItem: _alarmMinute);
     _pomoMin = widget.initial.mode == SessionMode.pomodoro
         ? widget.initial.minutes
         : 25;
@@ -76,6 +85,8 @@ class _TimerSheetState extends State<_TimerSheet> {
 
   @override
   void dispose() {
+    _hourWheel.dispose();
+    _minuteWheel.dispose();
     _name.dispose();
     super.dispose();
   }
@@ -85,7 +96,7 @@ class _TimerSheetState extends State<_TimerSheet> {
     minutes: switch (_mode) {
       SessionMode.endless => 0,
       SessionMode.pomodoro => _pomoMin,
-      SessionMode.timer => _timerMin,
+      SessionMode.alarm => _alarmHour * 60 + _alarmMinute,
     },
   );
 
@@ -215,9 +226,9 @@ class _TimerSheetState extends State<_TimerSheet> {
                       onChanged: (v) => setState(() => _pomoMin = v),
                     ),
                   ],
-                  SessionMode.timer => [
+                  SessionMode.alarm => [
                     Text(
-                      '$_timerMin MIN',
+                      '${(_alarmHour % 12 == 0 ? 12 : _alarmHour % 12).toString().padLeft(2, '0')}:${_alarmMinute.toString().padLeft(2, '0')} ${_alarmHour < 12 ? 'AM' : 'PM'}',
                       style: const TextStyle(
                         fontSize: 48,
                         color: _mint,
@@ -230,12 +241,44 @@ class _TimerSheetState extends State<_TimerSheet> {
                       style: TextStyle(fontSize: 14, color: _mintDim),
                     ),
                     const SizedBox(height: 14),
-                    MinuteRuler(
-                      key: const ValueKey('timer'),
-                      min: 5,
-                      max: 180,
-                      value: _timerMin,
-                      onChanged: (v) => setState(() => _timerMin = v),
+                    SizedBox(
+                      height: 120,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            width: 200,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: const Color(0xff36402b),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _wheel(
+                                controller: _hourWheel,
+                                count: 24,
+                                onSelect: (v) => setState(() => _alarmHour = v),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 14),
+                                child: Text(
+                                  ':',
+                                  style: TextStyle(fontSize: 44, color: _mint),
+                                ),
+                              ),
+                              _wheel(
+                                controller: _minuteWheel,
+                                count: 60,
+                                onSelect: (v) =>
+                                    setState(() => _alarmMinute = v),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 },
@@ -280,6 +323,39 @@ class _TimerSheetState extends State<_TimerSheet> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _wheel({
+    required FixedExtentScrollController controller,
+    required int count,
+    required ValueChanged<int> onSelect,
+  }) {
+    return SizedBox(
+      width: 70,
+      child: ListWheelScrollView.useDelegate(
+        controller: controller,
+        itemExtent: 60,
+        physics: const FixedExtentScrollPhysics(),
+        perspective: 0.004,
+        diameterRatio: 2,
+        overAndUnderCenterOpacity: 0.35,
+        onSelectedItemChanged: (value) {
+          HapticFeedback.selectionClick();
+          onSelect(value);
+        },
+        childDelegate: ListWheelChildBuilderDelegate(
+          childCount: count,
+          builder: (context, index) {
+            return Center(
+              child: Text(
+                index.toString().padLeft(2, '0'),
+                style: const TextStyle(fontSize: 40, color: _mint),
+              ),
+            );
+          },
         ),
       ),
     );

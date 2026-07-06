@@ -61,8 +61,8 @@ class _SessionPageState extends State<SessionPage> {
       if (!_onBreak) _focusSec++;
 
       switch (_mode) {
-        case SessionMode.timer:
-          if (_phaseSec >= widget.config.minutes * 60) _complete();
+        case SessionMode.alarm:
+          if (_alarmSecondsRemaining <= 0) _complete();
         case SessionMode.pomodoro:
           final target = _onBreak ? 5 * 60 : widget.config.minutes * 60;
           if (_phaseSec >= target) _advancePhase();
@@ -141,6 +141,17 @@ class _SessionPageState extends State<SessionPage> {
     if (context.mounted) Navigator.of(context).pop();
   }
 
+  int get _alarmSecondsRemaining {
+    final now = DateTime.now();
+    final targetMin = widget.config.minutes;
+    final currentMin = now.hour * 60 + now.minute;
+    var diffMin = targetMin - currentMin;
+    if (diffMin < 0) diffMin += 1440;
+    var diffSec = diffMin * 60 - now.second;
+    if (diffSec < 0) diffSec = 0;
+    return diffSec.clamp(0, 599940);
+  }
+
   String get _display {
     final seconds = switch (_mode) {
       SessionMode.endless => _phaseSec,
@@ -149,10 +160,7 @@ class _SessionPageState extends State<SessionPage> {
           0,
           599940,
         ),
-      SessionMode.timer => (widget.config.minutes * 60 - _phaseSec).clamp(
-        0,
-        599940,
-      ),
+      SessionMode.alarm => _alarmSecondsRemaining,
     };
     final big = seconds >= 6000 ? seconds ~/ 3600 : seconds ~/ 60;
     final small = seconds >= 6000 ? (seconds % 3600) ~/ 60 : seconds % 60;
@@ -168,7 +176,7 @@ class _SessionPageState extends State<SessionPage> {
         _onBreak
             ? 'BREAK — BLOCK $_block DONE'
             : 'POMODORO — BLOCK $_block OF FOCUS',
-      SessionMode.timer => '${widget.config.minutes} MIN TIMER',
+      SessionMode.alarm => 'ALARM — ENDS AT ${widget.config.label}',
     };
   }
 
@@ -207,29 +215,54 @@ class _SessionPageState extends State<SessionPage> {
                   child: SizedBox(
                     width: double.infinity,
                     child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Text(
-                            '88:88',
-                            style: TextStyle(
-                              fontSize: 120,
-                              color: _dim.withValues(alpha: 0.15),
-                              height: 1,
-                            ),
-                          ),
-                          Text(
-                            _blink || _paused || _completed
-                                ? _display
-                                : _display.replaceAll(':', ' '),
-                            style: const TextStyle(
-                              fontSize: 120,
-                              color: _mint,
-                              height: 1,
-                            ),
-                          ),
-                        ],
+                      fit: BoxFit.fitWidth,
+                      child: Builder(
+                        builder: (context) {
+                          const bgStr = '88:88';
+                          final fgStr = _display;
+                          final showColon = _blink || _paused || _completed;
+
+                          return Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ...List.generate(bgStr.length, (i) {
+                                final isColon = bgStr[i] == ':';
+                                final isActive = !isColon || showColon;
+                                final isOne = fgStr[i] == '1';
+
+                                return Stack(
+                                  alignment: Alignment.centerRight,
+                                  children: [
+                                    Text(
+                                      bgStr[i],
+                                      style: TextStyle(
+                                        fontSize: 150,
+                                        color: _dim.withValues(alpha: 0.15),
+                                        height: 1.6,
+                                      ),
+                                    ),
+                                    Transform.translate(
+                                      offset: isOne
+                                          ? const Offset(7, 0)
+                                          : Offset.zero,
+                                      child: Text(
+                                        fgStr[i],
+                                        style: TextStyle(
+                                          fontSize: 150,
+                                          color: isActive
+                                              ? _mint
+                                              : Colors.transparent,
+                                          height: 1,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -356,54 +389,11 @@ class _BlockCard extends StatelessWidget {
 
   Future<void> _editList(BuildContext context) async {
     HapticFeedback.selectionClick();
-    final controller = TextEditingController(
-      text: store.blockedApps.join(', '),
-    );
     final result = await showDialog<List<String>>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.black,
-        title: const Text(
-          'BLOCKED APPS',
-          style: TextStyle(color: _mint, fontSize: 22),
-        ),
-        content: TextField(
-          controller: controller,
-          style: const TextStyle(fontSize: 17, color: _mint),
-          cursorColor: _mint,
-          decoration: const InputDecoration(
-            hintText: 'APP NAMES, COMMA SEPARATED',
-            hintStyle: TextStyle(color: _muted, fontSize: 14),
-            enabledBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: _muted),
-            ),
-            focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: _mint),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'CANCEL',
-              style: TextStyle(color: _muted, fontSize: 18),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, [
-              for (final app in controller.text.split(','))
-                if (app.trim().isNotEmpty) app.trim().toUpperCase(),
-            ]),
-            child: const Text(
-              'SAVE',
-              style: TextStyle(color: _mint, fontSize: 18),
-            ),
-          ),
-        ],
-      ),
+      builder: (context) =>
+          _BlockedAppsDialog(initial: store.blockedApps.join(', ')),
     );
-    controller.dispose();
     if (result != null) await store.setBlockedApps(result);
   }
 
@@ -633,26 +623,85 @@ class _AddTaskButton extends StatelessWidget {
   }
 }
 
-Future<void> showAddTaskDialog(BuildContext context, SessionStore store) async {
-  final controller = TextEditingController();
-  var tag = focusTags.first;
-  var today = true;
+void _closeInputDialog<T>(BuildContext context, [T? result]) {
+  FocusManager.instance.primaryFocus?.unfocus();
+  Navigator.of(context).pop(result);
+}
 
-  final saved = await showDialog<bool>(
+Future<void> showAddTaskDialog(BuildContext context, SessionStore store) async {
+  final result = await showDialog<_AddTaskResult>(
     context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setSheet) => AlertDialog(
-        backgroundColor: Colors.black,
-        title: const Text(
-          'NEW TASK',
-          style: TextStyle(color: _mint, fontSize: 22),
-        ),
-        content: Column(
+    builder: (context) => const _AddTaskDialog(),
+  );
+  if (result != null) {
+    HapticFeedback.selectionClick();
+    await store.addTask(result.title, tag: result.tag, today: result.today);
+  }
+}
+
+class _AddTaskResult {
+  const _AddTaskResult({
+    required this.title,
+    required this.tag,
+    required this.today,
+  });
+
+  final String title;
+  final String tag;
+  final bool today;
+}
+
+class _AddTaskDialog extends StatefulWidget {
+  const _AddTaskDialog();
+
+  @override
+  State<_AddTaskDialog> createState() => _AddTaskDialogState();
+}
+
+class _AddTaskDialogState extends State<_AddTaskDialog> {
+  late final TextEditingController _controller;
+  var _tag = focusTags.first;
+  var _today = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final title = _controller.text.trim().toUpperCase();
+    if (title.isEmpty) {
+      _closeInputDialog(context);
+      return;
+    }
+    _closeInputDialog(
+      context,
+      _AddTaskResult(title: title, tag: _tag, today: _today),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.black,
+      title: const Text(
+        'NEW TASK',
+        style: TextStyle(color: _mint, fontSize: 22),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
-              controller: controller,
+              controller: _controller,
               autofocus: true,
               textCapitalization: TextCapitalization.characters,
               style: const TextStyle(fontSize: 18, color: _mint),
@@ -672,53 +721,120 @@ Future<void> showAddTaskDialog(BuildContext context, SessionStore store) async {
             Row(
               children: [
                 _DialogChip(
-                  label: tag,
+                  label: _tag,
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    setSheet(() {
-                      tag =
-                          focusTags[(focusTags.indexOf(tag) + 1) %
+                    setState(() {
+                      _tag =
+                          focusTags[(focusTags.indexOf(_tag) + 1) %
                               focusTags.length];
                     });
                   },
                 ),
                 const SizedBox(width: 10),
                 _DialogChip(
-                  label: today ? 'TODAY' : 'LATER',
+                  label: _today ? 'TODAY' : 'LATER',
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    setSheet(() => today = !today);
+                    setState(() => _today = !_today);
                   },
                 ),
               ],
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'CANCEL',
-              style: TextStyle(color: _muted, fontSize: 18),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'ADD',
-              style: TextStyle(color: _mint, fontSize: 18),
-            ),
-          ),
-        ],
       ),
-    ),
-  );
+      actions: [
+        TextButton(
+          onPressed: () => _closeInputDialog(context),
+          child: const Text(
+            'CANCEL',
+            style: TextStyle(color: _muted, fontSize: 18),
+          ),
+        ),
+        TextButton(
+          onPressed: _save,
+          child: const Text(
+            'ADD',
+            style: TextStyle(color: _mint, fontSize: 18),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
-  final title = controller.text.trim().toUpperCase();
-  controller.dispose();
-  if (saved == true && title.isNotEmpty) {
-    HapticFeedback.selectionClick();
-    await store.addTask(title, tag: tag, today: today);
+class _BlockedAppsDialog extends StatefulWidget {
+  const _BlockedAppsDialog({required this.initial});
+
+  final String initial;
+
+  @override
+  State<_BlockedAppsDialog> createState() => _BlockedAppsDialogState();
+}
+
+class _BlockedAppsDialogState extends State<_BlockedAppsDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initial);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  List<String> _parseApps() => [
+    for (final app in _controller.text.split(','))
+      if (app.trim().isNotEmpty) app.trim().toUpperCase(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.black,
+      title: const Text(
+        'BLOCKED APPS',
+        style: TextStyle(color: _mint, fontSize: 22),
+      ),
+      content: SingleChildScrollView(
+        child: TextField(
+          controller: _controller,
+          style: const TextStyle(fontSize: 17, color: _mint),
+          cursorColor: _mint,
+          decoration: const InputDecoration(
+            hintText: 'APP NAMES, COMMA SEPARATED',
+            hintStyle: TextStyle(color: _muted, fontSize: 14),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: _muted),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: _mint),
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => _closeInputDialog(context),
+          child: const Text(
+            'CANCEL',
+            style: TextStyle(color: _muted, fontSize: 18),
+          ),
+        ),
+        TextButton(
+          onPressed: () => _closeInputDialog(context, _parseApps()),
+          child: const Text(
+            'SAVE',
+            style: TextStyle(color: _mint, fontSize: 18),
+          ),
+        ),
+      ],
+    );
   }
 }
 

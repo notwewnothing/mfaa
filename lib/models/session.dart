@@ -1,12 +1,12 @@
 enum SessionKind { focus, sleep }
 
-enum SessionMode { endless, pomodoro, timer }
+enum SessionMode { endless, pomodoro, alarm }
 
 extension SessionModeLabel on SessionMode {
   String get label => switch (this) {
     SessionMode.endless => 'ENDLESS',
     SessionMode.pomodoro => 'POMODORO',
-    SessionMode.timer => 'TIMER',
+    SessionMode.alarm => 'ALARM',
   };
 }
 
@@ -25,18 +25,32 @@ class SessionConfig {
   final SessionMode mode;
   final int minutes;
 
-  String get label => switch (mode) {
-    SessionMode.endless => 'ENDLESS',
-    SessionMode.pomodoro => '$minutes+5 POMO',
-    SessionMode.timer => '$minutes MIN',
-  };
+  String get label {
+    switch (mode) {
+      case SessionMode.endless:
+        return 'ENDLESS';
+      case SessionMode.pomodoro:
+        return '$minutes+5 POMO';
+      case SessionMode.alarm:
+        final h = minutes ~/ 60;
+        final m = minutes % 60;
+        final h12 = h % 12 == 0 ? 12 : h % 12;
+        final ampm = h < 12 ? 'AM' : 'PM';
+        return '${h12.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')} $ampm';
+    }
+  }
 
   Map<String, Object?> toJson() => {'mode': mode.name, 'minutes': minutes};
 
-  static SessionConfig fromJson(Map<String, Object?> json) => SessionConfig(
-    mode: SessionMode.values.asNameMap()[json['mode']] ?? SessionMode.timer,
-    minutes: json['minutes'] as int? ?? 30,
-  );
+  static SessionConfig fromJson(Map<String, Object?> json) {
+    final mode =
+        SessionMode.values.asNameMap()[json['mode']] ?? SessionMode.alarm;
+    return SessionConfig(
+      mode: mode,
+      minutes:
+          json['minutes'] as int? ?? (mode == SessionMode.alarm ? 420 : 30),
+    );
+  }
 }
 
 class SessionPreset {

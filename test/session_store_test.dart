@@ -82,7 +82,7 @@ void main() {
     );
     await store.setLastConfig(
       SessionKind.focus,
-      const SessionConfig(mode: SessionMode.timer, minutes: 90),
+      const SessionConfig(mode: SessionMode.alarm, minutes: 90),
     );
     await store.setBlockApps(true);
     await store.setStrictMode(true);
@@ -101,7 +101,7 @@ void main() {
       'SPRINT',
     ]);
     expect(reloaded.lastConfig(SessionKind.focus).minutes, 90);
-    expect(reloaded.lastConfig(SessionKind.focus).mode, SessionMode.timer);
+    expect(reloaded.lastConfig(SessionKind.focus).mode, SessionMode.alarm);
     expect(reloaded.blockApps, true);
     expect(reloaded.strictMode, true);
     expect(reloaded.blockedApps, ['SOCIAL', 'GAMES']);

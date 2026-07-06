@@ -64,6 +64,7 @@ class _AlarmAppState extends State<AlarmApp> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _openRing(alarm));
       return;
     }
+
     _ringOpen = true;
     nav
         .push(

@@ -39,7 +39,7 @@ class FocusPage extends StatelessWidget {
         (Icons.shield_outlined, 'SCHEDULE', 'NO TIME SET', null),
         (
           Icons.timer_outlined,
-          'TIMER',
+          'ALARM',
           store.lastConfig(SessionKind.focus).label,
           () async {
             HapticFeedback.selectionClick();
@@ -94,7 +94,7 @@ class SleepPage extends StatelessWidget {
         ),
         (
           Icons.timer_outlined,
-          'TIMER',
+          'ALARM',
           store.lastConfig(SessionKind.sleep).label,
           () async {
             HapticFeedback.selectionClick();

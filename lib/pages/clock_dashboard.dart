@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:app_usage/app_usage.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -634,7 +636,49 @@ class _StatsBoard extends StatefulWidget {
 }
 
 class _StatsBoardState extends State<_StatsBoard> {
-  late final int _screenMinutes = 150 + Random(2026).nextInt(240);
+  int? _screenMinutes;
+  bool _unavailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchScreenTime();
+  }
+
+  Future<void> _fetchScreenTime() async {
+    try {
+      final now = DateTime.now();
+      final startDate = DateTime(now.year, now.month, now.day);
+      final endDate = now;
+      final infoList = await AppUsage().getAppUsage(startDate, endDate);
+      
+      int totalMinutes = 0;
+      for (var info in infoList) {
+        totalMinutes += info.usage.inMinutes;
+      }
+      
+      if (mounted) {
+        setState(() {
+          _screenMinutes = totalMinutes;
+          _unavailable = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _unavailable = true;
+          _screenMinutes = 0;
+        });
+      }
+    }
+  }
+
+  void _openUsageSettings() {
+    const intent = AndroidIntent(
+      action: 'android.settings.USAGE_ACCESS_SETTINGS',
+    );
+    intent.launch();
+  }
 
   static double _staggered(double t, int i) {
     final start = i * 0.13;
@@ -644,24 +688,36 @@ class _StatsBoardState extends State<_StatsBoard> {
   @override
   Widget build(BuildContext context) {
     final sessions = SessionScope.of(context);
-    final stats = <(String, String, double)>[
+    
+    // Default to 0 while loading
+    final currentMinutes = _screenMinutes ?? 0;
+    
+    final screenTimeLabel = _unavailable 
+        ? 'UNAVAILABLE' 
+        : '${currentMinutes ~/ 60}H ${(currentMinutes % 60).toString().padLeft(2, '0')}M';
+        
+    final screenTimeFraction = _unavailable ? 0.0 : currentMinutes / 720;
+
+    final stats = <(String, String, double, VoidCallback?)>[
       (
         'SCREEN TIME',
-        '${_screenMinutes ~/ 60}H ${(_screenMinutes % 60).toString().padLeft(2, '0')}M',
-        _screenMinutes / 720,
+        screenTimeLabel,
+        screenTimeFraction,
+        _unavailable ? _openUsageSettings : null,
       ),
       (
         'DISTRACTED',
         '${sessions.distractedPct}%',
         sessions.distractedPct / 100,
+        null,
       ),
-      ('FOCUS SCORE', '${sessions.focusScore}/100', sessions.focusScore / 100),
-      ('SLEEP SCORE', '${sessions.sleepScore}/100', sessions.sleepScore / 100),
+      ('FOCUS SCORE', '${sessions.focusScore}/100', sessions.focusScore / 100, null),
+      ('SLEEP SCORE', '${sessions.sleepScore}/100', sessions.sleepScore / 100, null),
     ];
     return _board(stats);
   }
 
-  Widget _board(List<(String, String, double)> stats) {
+  Widget _board(List<(String, String, double, VoidCallback?)> stats) {
     return LayoutBuilder(
       builder: (context, box) {
         final rowSpace = box.maxHeight / stats.length;
@@ -696,62 +752,83 @@ class _StatRow extends StatelessWidget {
     required this.barHeight,
   });
 
-  final (String, String, double) stat;
+  final (String, String, double, VoidCallback?) stat;
   final double reveal;
   final double fontSize;
   final double barHeight;
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: reveal,
-      child: Transform.translate(
-        offset: Offset(0, 10 * (1 - reveal)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    final hasAction = stat.$4 != null;
+
+    Widget content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            Text(
+              stat.$1,
+              style: TextStyle(
+                fontSize: fontSize,
+                color: _muted,
+                height: 1.1,
+              ),
+            ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  stat.$1,
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    color: _muted,
-                    height: 1.1,
-                  ),
-                ),
                 Text(
                   stat.$2,
                   style: TextStyle(
                     fontSize: fontSize,
-                    color: _screen,
+                    color: hasAction ? const Color(0xffe57373) : _screen,
                     height: 1.1,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            ClipRRect(
-              borderRadius: const BorderRadius.all(Radius.circular(3)),
-              child: SizedBox(
-                height: barHeight,
-                width: double.infinity,
-                child: ColoredBox(
-                  color: _dim.withValues(alpha: 0.15),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: FractionallySizedBox(
-                      widthFactor: (stat.$3 * reveal).clamp(0.0, 1.0),
-                      heightFactor: 1,
-                      child: const ColoredBox(color: _screen),
-                    ),
+                if (hasAction)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Icon(Icons.settings, size: fontSize * 0.9, color: const Color(0xffe57373)),
                   ),
-                ),
-              ),
+              ],
             ),
           ],
         ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: const BorderRadius.all(Radius.circular(3)),
+          child: SizedBox(
+            height: barHeight,
+            width: double.infinity,
+            child: ColoredBox(
+              color: _dim.withValues(alpha: 0.15),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: (stat.$3 * reveal).clamp(0.0, 1.0),
+                  heightFactor: 1,
+                  child: const ColoredBox(color: _screen),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (hasAction) {
+      content = GestureDetector(
+        onTap: stat.$4,
+        behavior: HitTestBehavior.opaque,
+        child: content,
+      );
+    }
+
+    return Opacity(
+      opacity: reveal,
+      child: Transform.translate(
+        offset: Offset(0, 10 * (1 - reveal)),
+        child: content,
       ),
     );
   }
