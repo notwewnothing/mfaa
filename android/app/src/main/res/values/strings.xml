@@ -1,0 +1,3 @@
+<resources>
+    <string name="app_blocker_accessibility_description">Block selected apps during focus sessions.</string>
+</resources>

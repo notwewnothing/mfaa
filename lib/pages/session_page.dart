@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/session.dart';
+import '../services/app_blocker.dart';
 import '../services/session_store.dart';
 import '../widgets/tactile.dart';
 
@@ -34,6 +35,7 @@ class _SessionPageState extends State<SessionPage> {
   bool _paused = false;
   bool _completed = false;
   bool _blink = true;
+  SessionStore? _store;
 
   SessionMode get _mode => widget.config.mode;
 
@@ -44,10 +46,45 @@ class _SessionPageState extends State<SessionPage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final store = SessionScope.of(context);
+    if (_store == store) return;
+    _store?.removeListener(_syncBlocking);
+    _store = store;
+    store.addListener(_syncBlocking);
+    unawaited(_syncBlocking());
+  }
+
+  @override
   void dispose() {
     _ticker?.cancel();
+    _store?.removeListener(_syncBlocking);
+    unawaited(_disableBlocking());
     super.dispose();
   }
+
+  Future<void> _syncBlocking() async {
+    final store = _store;
+    if (store == null) return;
+    await AppBlocker.setBlockingState(
+      enabled:
+          widget.kind == SessionKind.focus &&
+          !_completed &&
+          store.blockApps &&
+          store.blockedApps.isNotEmpty,
+      strictMode: store.strictMode,
+      onBreak: _mode == SessionMode.pomodoro && _onBreak,
+      blockedPackages: store.blockedApps,
+    );
+  }
+
+  Future<void> _disableBlocking() => AppBlocker.setBlockingState(
+    enabled: false,
+    strictMode: false,
+    onBreak: false,
+    blockedPackages: const [],
+  );
 
   void _tick() {
     if (!mounted || _completed) return;
@@ -78,12 +115,14 @@ class _SessionPageState extends State<SessionPage> {
     _onBreak = !_onBreak;
     if (!_onBreak) _block++;
     _phaseSec = 0;
+    unawaited(_syncBlocking());
   }
 
   void _complete() {
     HapticFeedback.heavyImpact();
     SystemSound.play(SystemSoundType.alert);
     _completed = true;
+    unawaited(_syncBlocking());
   }
 
   Future<bool> _strictAllows(BuildContext context, SessionStore store) async {
@@ -387,14 +426,60 @@ class _BlockCard extends StatelessWidget {
 
   final SessionStore store;
 
-  Future<void> _editList(BuildContext context) async {
+  Future<bool> _editList(BuildContext context) async {
     HapticFeedback.selectionClick();
     final result = await showDialog<List<String>>(
       context: context,
-      builder: (context) =>
-          _BlockedAppsDialog(initial: store.blockedApps.join(', ')),
+      builder: (context) => _BlockedAppsDialog(initial: store.blockedApps),
     );
-    if (result != null) await store.setBlockedApps(result);
+    if (result == null) return false;
+    await store.setBlockedApps(result);
+    return true;
+  }
+
+  Future<void> _toggleBlocking(BuildContext context, bool value) async {
+    if (value && store.blockedApps.isEmpty) {
+      final saved = await _editList(context);
+      if (!saved || store.blockedApps.isEmpty) return;
+    }
+    if (value &&
+        !await AppBlocker.isAccessibilityEnabled() &&
+        context.mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.black,
+          title: const Text(
+            'ENABLE APP BLOCKING',
+            style: TextStyle(color: _mint, fontSize: 22),
+          ),
+          content: const Text(
+            'TURN ON MFAAA APP BLOCKER IN ACCESSIBILITY SETTINGS.',
+            style: TextStyle(color: _muted, fontSize: 15),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'LATER',
+                style: TextStyle(color: _muted, fontSize: 18),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                unawaited(AppBlocker.openAccessibilitySettings());
+                Navigator.pop(context);
+              },
+              child: const Text(
+                'OPEN',
+                style: TextStyle(color: _mint, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    await store.setBlockApps(value);
   }
 
   @override
@@ -417,7 +502,7 @@ class _BlockCard extends StatelessWidget {
                   child: Tactile(
                     pressedScale: 0.97,
                     child: InkWell(
-                      onTap: () => _editList(context),
+                      onTap: () => unawaited(_editList(context)),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -438,7 +523,8 @@ class _BlockCard extends StatelessWidget {
                 ),
                 _LcdSwitch(
                   value: store.blockApps,
-                  onChanged: store.setBlockApps,
+                  onChanged: (value) =>
+                      unawaited(_toggleBlocking(context, value)),
                 ),
               ],
             ),
@@ -451,7 +537,7 @@ class _BlockCard extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: () {
                     HapticFeedback.mediumImpact();
-                    store.setStrictMode(!store.strictMode);
+                    unawaited(store.setStrictMode(!store.strictMode));
                   },
                   icon: Icon(
                     store.strictMode ? Icons.lock : Icons.lock_outline,
@@ -767,31 +853,29 @@ class _AddTaskDialogState extends State<_AddTaskDialog> {
 class _BlockedAppsDialog extends StatefulWidget {
   const _BlockedAppsDialog({required this.initial});
 
-  final String initial;
+  final List<String> initial;
 
   @override
   State<_BlockedAppsDialog> createState() => _BlockedAppsDialogState();
 }
 
 class _BlockedAppsDialogState extends State<_BlockedAppsDialog> {
-  late final TextEditingController _controller;
+  late final Future<List<InstalledApp>> _apps;
+  late final Set<String> _selected;
 
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.initial);
+    _apps = AppBlocker.installedApps();
+    _selected = {...widget.initial};
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  void _toggle(String packageName) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (!_selected.add(packageName)) _selected.remove(packageName);
+    });
   }
-
-  List<String> _parseApps() => [
-    for (final app in _controller.text.split(','))
-      if (app.trim().isNotEmpty) app.trim().toUpperCase(),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -801,24 +885,78 @@ class _BlockedAppsDialogState extends State<_BlockedAppsDialog> {
         'BLOCKED APPS',
         style: TextStyle(color: _mint, fontSize: 22),
       ),
-      content: SingleChildScrollView(
-        child: TextField(
-          controller: _controller,
-          style: const TextStyle(fontSize: 17, color: _mint),
-          cursorColor: _mint,
-          decoration: const InputDecoration(
-            hintText: 'APP NAMES, COMMA SEPARATED',
-            hintStyle: TextStyle(color: _muted, fontSize: 14),
-            enabledBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: _muted),
-            ),
-            focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: _mint),
-            ),
-          ),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 420,
+        child: FutureBuilder<List<InstalledApp>>(
+          future: _apps,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(
+                child: CircularProgressIndicator(color: _mint),
+              );
+            }
+            if (snapshot.hasError) {
+              return const Center(
+                child: Text(
+                  'COULD NOT LOAD APPS',
+                  style: TextStyle(color: _muted, fontSize: 16),
+                ),
+              );
+            }
+            final apps = snapshot.data ?? const [];
+            if (apps.isEmpty) {
+              return const Center(
+                child: Text(
+                  'NO APPS FOUND',
+                  style: TextStyle(color: _muted, fontSize: 16),
+                ),
+              );
+            }
+            return ListView.separated(
+              itemCount: apps.length,
+              separatorBuilder: (_, _) => const Divider(color: _dim, height: 1),
+              itemBuilder: (context, index) {
+                final app = apps[index];
+                final selected = _selected.contains(app.packageName);
+                return ListTile(
+                  onTap: () => _toggle(app.packageName),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    app.label.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: _mint, fontSize: 18),
+                  ),
+                  subtitle: Text(
+                    app.packageName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: _muted, fontSize: 11),
+                  ),
+                  trailing: Icon(
+                    selected
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    color: selected ? _mint : _dim,
+                  ),
+                );
+              },
+            );
+          },
         ),
       ),
       actions: [
+        TextButton(
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            setState(_selected.clear);
+          },
+          child: const Text(
+            'CLEAR',
+            style: TextStyle(color: _muted, fontSize: 18),
+          ),
+        ),
         TextButton(
           onPressed: () => _closeInputDialog(context),
           child: const Text(
@@ -827,7 +965,7 @@ class _BlockedAppsDialogState extends State<_BlockedAppsDialog> {
           ),
         ),
         TextButton(
-          onPressed: () => _closeInputDialog(context, _parseApps()),
+          onPressed: () => _closeInputDialog(context, _selected.toList()),
           child: const Text(
             'SAVE',
             style: TextStyle(color: _mint, fontSize: 18),

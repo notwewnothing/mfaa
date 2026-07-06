@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:math';
-import 'dart:ui';
 
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:app_usage/app_usage.dart';
@@ -651,12 +649,12 @@ class _StatsBoardState extends State<_StatsBoard> {
       final startDate = DateTime(now.year, now.month, now.day);
       final endDate = now;
       final infoList = await AppUsage().getAppUsage(startDate, endDate);
-      
+
       int totalMinutes = 0;
       for (var info in infoList) {
         totalMinutes += info.usage.inMinutes;
       }
-      
+
       if (mounted) {
         setState(() {
           _screenMinutes = totalMinutes;
@@ -688,14 +686,14 @@ class _StatsBoardState extends State<_StatsBoard> {
   @override
   Widget build(BuildContext context) {
     final sessions = SessionScope.of(context);
-    
+
     // Default to 0 while loading
     final currentMinutes = _screenMinutes ?? 0;
-    
-    final screenTimeLabel = _unavailable 
-        ? 'UNAVAILABLE' 
+
+    final screenTimeLabel = _unavailable
+        ? 'UNAVAILABLE'
         : '${currentMinutes ~/ 60}H ${(currentMinutes % 60).toString().padLeft(2, '0')}M';
-        
+
     final screenTimeFraction = _unavailable ? 0.0 : currentMinutes / 720;
 
     final stats = <(String, String, double, VoidCallback?)>[
@@ -711,8 +709,18 @@ class _StatsBoardState extends State<_StatsBoard> {
         sessions.distractedPct / 100,
         null,
       ),
-      ('FOCUS SCORE', '${sessions.focusScore}/100', sessions.focusScore / 100, null),
-      ('SLEEP SCORE', '${sessions.sleepScore}/100', sessions.sleepScore / 100, null),
+      (
+        'FOCUS SCORE',
+        '${sessions.focusScore}/100',
+        sessions.focusScore / 100,
+        null,
+      ),
+      (
+        'SLEEP SCORE',
+        '${sessions.sleepScore}/100',
+        sessions.sleepScore / 100,
+        null,
+      ),
     ];
     return _board(stats);
   }
@@ -769,11 +777,7 @@ class _StatRow extends StatelessWidget {
           children: [
             Text(
               stat.$1,
-              style: TextStyle(
-                fontSize: fontSize,
-                color: _muted,
-                height: 1.1,
-              ),
+              style: TextStyle(fontSize: fontSize, color: _muted, height: 1.1),
             ),
             Row(
               children: [
@@ -788,7 +792,11 @@ class _StatRow extends StatelessWidget {
                 if (hasAction)
                   Padding(
                     padding: const EdgeInsets.only(left: 4),
-                    child: Icon(Icons.settings, size: fontSize * 0.9, color: const Color(0xffe57373)),
+                    child: Icon(
+                      Icons.settings,
+                      size: fontSize * 0.9,
+                      color: const Color(0xffe57373),
+                    ),
                   ),
               ],
             ),
