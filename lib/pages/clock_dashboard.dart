@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:android_intent_plus/android_intent.dart';
-import 'package:app_usage/app_usage.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../models/alarm.dart';
 import '../models/session.dart';
 import '../services/alarm_store.dart';
+import '../services/device_usage.dart';
 import '../services/session_store.dart';
 import '../widgets/slide_up_route.dart';
 import '../widgets/tactile.dart';
@@ -647,21 +647,14 @@ class _StatsBoardState extends State<_StatsBoard> {
     try {
       final now = DateTime.now();
       final startDate = DateTime(now.year, now.month, now.day);
-      final endDate = now;
-      final infoList = await AppUsage().getAppUsage(startDate, endDate);
-
-      int totalMinutes = 0;
-      for (var info in infoList) {
-        totalMinutes += info.usage.inMinutes;
-      }
-
+      final totalSec = await DeviceUsage.totalUsageSeconds(startDate, now);
       if (mounted) {
         setState(() {
-          _screenMinutes = totalMinutes;
+          _screenMinutes = totalSec ~/ 60;
           _unavailable = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() {
           _unavailable = true;

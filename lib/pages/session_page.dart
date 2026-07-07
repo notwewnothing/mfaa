@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../models/session.dart';
 import '../services/app_blocker.dart';
+import '../services/device_usage.dart';
 import '../services/session_store.dart';
 import '../widgets/tactile.dart';
 
@@ -25,16 +26,20 @@ class SessionPage extends StatefulWidget {
   State<SessionPage> createState() => _SessionPageState();
 }
 
-class _SessionPageState extends State<SessionPage> {
+class _SessionPageState extends State<SessionPage> with WidgetsBindingObserver {
   Timer? _ticker;
   int _phaseSec = 0;
   int _focusSec = 0;
   int _pausedSec = 0;
+  int _inAppSec = 0;
   int _block = 1;
+  late final DateTime _sessionStart;
   bool _onBreak = false;
   bool _paused = false;
   bool _completed = false;
   bool _blink = true;
+  bool _appInForeground = true;
+  int? _phoneUsageAtStart;
   SessionStore? _store;
 
   SessionMode get _mode => widget.config.mode;
@@ -42,7 +47,22 @@ class _SessionPageState extends State<SessionPage> {
   @override
   void initState() {
     super.initState();
+    _sessionStart = DateTime.now();
+    final startOfDay = DateTime(
+      _sessionStart.year,
+      _sessionStart.month,
+      _sessionStart.day,
+    );
+    DeviceUsage.totalUsageSeconds(startOfDay, _sessionStart).then((v) {
+      _phoneUsageAtStart = v;
+    });
+    WidgetsBinding.instance.addObserver(this);
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appInForeground = state == AppLifecycleState.resumed;
   }
 
   @override
@@ -58,6 +78,7 @@ class _SessionPageState extends State<SessionPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     _store?.removeListener(_syncBlocking);
     unawaited(_disableBlocking());
@@ -90,6 +111,7 @@ class _SessionPageState extends State<SessionPage> {
     if (!mounted || _completed) return;
     setState(() {
       _blink = !_blink;
+      if (_appInForeground) _inAppSec++;
       if (_paused) {
         _pausedSec++;
         return;
@@ -172,14 +194,31 @@ class _SessionPageState extends State<SessionPage> {
   Future<void> _stop(BuildContext context, SessionStore store) async {
     if (!_completed && !await _strictAllows(context, store)) return;
     HapticFeedback.heavyImpact();
+    final deviceDistracted =
+        widget.kind == SessionKind.focus && _phoneUsageAtStart != null
+        ? await _computeDeviceDistracted()
+        : 0;
     await store.recordSession(
       widget.kind,
       activeSeconds: widget.kind == SessionKind.focus
-          ? _focusSec
+          ? _focusSec - (_pausedSec + deviceDistracted)
           : _focusSec + _pausedSec,
-      distractedSeconds: widget.kind == SessionKind.focus ? _pausedSec : 0,
+      distractedSeconds: widget.kind == SessionKind.focus
+          ? _pausedSec + deviceDistracted
+          : 0,
     );
     if (context.mounted) Navigator.of(context).pop();
+  }
+
+  Future<int> _computeDeviceDistracted() async {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final totalNow = await DeviceUsage.totalUsageSeconds(startOfDay, now);
+    final increase = totalNow - (_phoneUsageAtStart ?? 0);
+    return DeviceUsage.computeDistractedSeconds(
+      phoneUsageIncrease: increase,
+      inAppSeconds: _inAppSec,
+    );
   }
 
   int get _alarmSecondsRemaining {
@@ -221,7 +260,8 @@ class _SessionPageState extends State<SessionPage> {
         _onBreak
             ? 'BREAK — BLOCK $_block DONE'
             : 'POMODORO — BLOCK $_block OF FOCUS',
-      SessionMode.quickNap => 'QUICK NAP — ${minutesLabel(widget.config.minutes)}',
+      SessionMode.quickNap =>
+        'QUICK NAP — ${minutesLabel(widget.config.minutes)}',
       SessionMode.alarm => 'ALARM — ENDS AT ${widget.config.label}',
     };
   }

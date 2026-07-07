@@ -19,8 +19,8 @@ class SessionStore extends ChangeNotifier {
   final Map<String, DayStats> _days = {};
   final Map<SessionKind, SessionConfig> _lastConfig = {
     SessionKind.focus: const SessionConfig(
-      mode: SessionMode.alarm,
-      minutes: 420,
+      mode: SessionMode.endless,
+      minutes: 0,
     ),
     SessionKind.sleep: const SessionConfig(
       mode: SessionMode.quickNap,
@@ -137,6 +137,12 @@ class SessionStore extends ChangeNotifier {
         _nextId = data['nextId'] as int? ?? 1;
       }
     } catch (_) {}
+    if (_lastConfig[SessionKind.focus]?.mode == SessionMode.alarm) {
+      _lastConfig[SessionKind.focus] = const SessionConfig(
+        mode: SessionMode.endless,
+        minutes: 0,
+      );
+    }
     if (_disposed) return;
     if (_presets.isEmpty && _prefs?.getString(_prefsKey) == null) {
       _presets.addAll([
