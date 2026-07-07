@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+// i hate this app :/
 import 'models/alarm.dart';
 import 'pages/alarm_ring_page.dart';
 import 'pages/clock_dashboard.dart';

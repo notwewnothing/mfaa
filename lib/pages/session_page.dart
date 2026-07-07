@@ -103,6 +103,8 @@ class _SessionPageState extends State<SessionPage> {
         case SessionMode.pomodoro:
           final target = _onBreak ? 5 * 60 : widget.config.minutes * 60;
           if (_phaseSec >= target) _advancePhase();
+        case SessionMode.quickNap:
+          if (_phaseSec >= widget.config.minutes * 60) _complete();
         case SessionMode.endless:
           break;
       }
@@ -199,6 +201,10 @@ class _SessionPageState extends State<SessionPage> {
           0,
           599940,
         ),
+      SessionMode.quickNap => (widget.config.minutes * 60 - _phaseSec).clamp(
+        0,
+        599940,
+      ),
       SessionMode.alarm => _alarmSecondsRemaining,
     };
     final big = seconds >= 6000 ? seconds ~/ 3600 : seconds ~/ 60;
@@ -215,6 +221,7 @@ class _SessionPageState extends State<SessionPage> {
         _onBreak
             ? 'BREAK — BLOCK $_block DONE'
             : 'POMODORO — BLOCK $_block OF FOCUS',
+      SessionMode.quickNap => 'QUICK NAP — ${minutesLabel(widget.config.minutes)}',
       SessionMode.alarm => 'ALARM — ENDS AT ${widget.config.label}',
     };
   }

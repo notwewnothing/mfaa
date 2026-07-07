@@ -86,12 +86,7 @@ class SleepPage extends StatelessWidget {
       kind: SessionKind.sleep,
       configColumns: [
         (Icons.shield_outlined, 'SCHEDULE', 'NO TIME SET', null),
-        (
-          Icons.alarm_outlined,
-          'ALARM',
-          next == null ? 'NO ALARM' : '${next.timeLabel12} ${next.meridiem}',
-          null,
-        ),
+
         (
           Icons.timer_outlined,
           'ALARM',

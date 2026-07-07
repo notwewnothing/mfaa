@@ -694,7 +694,7 @@ class _StatsBoardState extends State<_StatsBoard> {
         ? 'UNAVAILABLE'
         : '${currentMinutes ~/ 60}H ${(currentMinutes % 60).toString().padLeft(2, '0')}M';
 
-    final screenTimeFraction = _unavailable ? 0.0 : currentMinutes / 720;
+    final screenTimeFraction = _unavailable ? 0.0 : currentMinutes / 120;
 
     final stats = <(String, String, double, VoidCallback?)>[
       (
@@ -929,14 +929,14 @@ class _LiveClockState extends State<_LiveClock> {
       ),
     );
   }
-}
+} // lain
 
 class _InfiniteTimeline extends StatefulWidget {
   const _InfiniteTimeline();
 
   @override
   State<_InfiniteTimeline> createState() => _InfiniteTimelineState();
-}
+} // why are you crying lain
 
 class _InfiniteTimelineState extends State<_InfiniteTimeline> {
   final _centerKey = UniqueKey();
@@ -949,6 +949,7 @@ class _InfiniteTimelineState extends State<_InfiniteTimeline> {
     super.dispose();
   }
 
+  // don't cry lain
   bool _tick(ScrollUpdateNotification note) {
     _travelled += (note.scrollDelta ?? 0).abs();
     if (_travelled >= _barGap * 5) {

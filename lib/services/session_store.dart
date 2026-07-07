@@ -23,7 +23,7 @@ class SessionStore extends ChangeNotifier {
       minutes: 420,
     ),
     SessionKind.sleep: const SessionConfig(
-      mode: SessionMode.endless,
+      mode: SessionMode.quickNap,
       minutes: 30,
     ),
   };
@@ -150,7 +150,7 @@ class SessionStore extends ChangeNotifier {
           id: _nextId++,
           name: 'DEEP SLEEP',
           kind: SessionKind.sleep,
-          config: const SessionConfig(mode: SessionMode.endless, minutes: 30),
+          config: const SessionConfig(mode: SessionMode.quickNap, minutes: 30),
         ),
       ]);
     }

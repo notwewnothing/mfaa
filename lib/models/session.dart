@@ -1,11 +1,12 @@
 enum SessionKind { focus, sleep }
 
-enum SessionMode { endless, pomodoro, alarm }
+enum SessionMode { endless, pomodoro, quickNap, alarm }
 
 extension SessionModeLabel on SessionMode {
   String get label => switch (this) {
     SessionMode.endless => 'ENDLESS',
     SessionMode.pomodoro => 'POMODORO',
+    SessionMode.quickNap => 'QUICK NAP',
     SessionMode.alarm => 'ALARM',
   };
 }
@@ -31,6 +32,8 @@ class SessionConfig {
         return 'ENDLESS';
       case SessionMode.pomodoro:
         return '$minutes+5 POMO';
+      case SessionMode.quickNap:
+        return '${minutes}M NAP';
       case SessionMode.alarm:
         final h = minutes ~/ 60;
         final m = minutes % 60;

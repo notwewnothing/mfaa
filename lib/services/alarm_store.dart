@@ -71,6 +71,7 @@ class AlarmStore extends ChangeNotifier {
   String get nextAlarmSubtitle {
     final remaining = untilNext;
     if (remaining == null) return 'NO UPCOMING ALARMS — TAP + TO ADD';
+    // ITS A CONSPIRACY BY THE N.H.K
     final minutes = remaining.inMinutes;
     if (minutes < 1) return 'THE NEXT ALARM IN LESS THAN A MIN';
     if (minutes < 100) return 'THE NEXT ALARM IN $minutes MIN';

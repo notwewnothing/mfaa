@@ -56,8 +56,8 @@ class _TimerSheetState extends State<_TimerSheet> {
   late final TextEditingController _name;
 
   List<SessionMode> get _modes => widget.kind == SessionKind.focus
-      ? SessionMode.values
-      : [SessionMode.endless, SessionMode.alarm];
+      ? [SessionMode.endless, SessionMode.pomodoro, SessionMode.alarm]
+      : [SessionMode.quickNap, SessionMode.alarm];
 
   late int _alarmHour;
   late int _alarmMinute;
@@ -77,9 +77,10 @@ class _TimerSheetState extends State<_TimerSheet> {
     _alarmMinute = _timerMin % 60;
     _hourWheel = FixedExtentScrollController(initialItem: _alarmHour);
     _minuteWheel = FixedExtentScrollController(initialItem: _alarmMinute);
-    _pomoMin = widget.initial.mode == SessionMode.pomodoro
-        ? widget.initial.minutes
-        : 25;
+    _pomoMin = switch (widget.initial.mode) {
+      SessionMode.pomodoro || SessionMode.quickNap => widget.initial.minutes,
+      _ => widget.kind == SessionKind.sleep ? 30 : 25,
+    };
     _name = TextEditingController();
   }
 
@@ -95,7 +96,7 @@ class _TimerSheetState extends State<_TimerSheet> {
     mode: _mode,
     minutes: switch (_mode) {
       SessionMode.endless => 0,
-      SessionMode.pomodoro => _pomoMin,
+      SessionMode.pomodoro || SessionMode.quickNap => _pomoMin,
       SessionMode.alarm => _alarmHour * 60 + _alarmMinute,
     },
   );
@@ -220,8 +221,31 @@ class _TimerSheetState extends State<_TimerSheet> {
                     const SizedBox(height: 14),
                     MinuteRuler(
                       key: const ValueKey('pomo'),
-                      min: 15,
-                      max: 60,
+                      min: 10,
+                      max: 90,
+                      value: _pomoMin,
+                      onChanged: (v) => setState(() => _pomoMin = v),
+                    ),
+                  ],
+                  SessionMode.quickNap => [
+                    Text(
+                      '$_pomoMin MIN',
+                      style: const TextStyle(
+                        fontSize: 48,
+                        color: _mint,
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'QUICK NAP TIMER',
+                      style: TextStyle(fontSize: 14, color: _mintDim),
+                    ),
+                    const SizedBox(height: 14),
+                    MinuteRuler(
+                      key: const ValueKey('nap'),
+                      min: 5,
+                      max: 90,
                       value: _pomoMin,
                       onChanged: (v) => setState(() => _pomoMin = v),
                     ),
@@ -361,3 +385,4 @@ class _TimerSheetState extends State<_TimerSheet> {
     );
   }
 }
+// see you space cowboy :)
