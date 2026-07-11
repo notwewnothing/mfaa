@@ -931,32 +931,81 @@ class _InfiniteTimeline extends StatefulWidget {
   @override
   State<_InfiniteTimeline> createState() => _InfiniteTimelineState();
 } // why are you crying lain
+
 class _SpringScrollPhysics extends ScrollPhysics {
-  const _SpringScrollPhysics({super.parent});
+  final double Function() restOffset;
+
+  const _SpringScrollPhysics({super.parent, required this.restOffset});
 
   @override
   _SpringScrollPhysics applyTo(ScrollPhysics? ancestor) =>
-      _SpringScrollPhysics(parent: buildParent(ancestor));
+      _SpringScrollPhysics(
+        parent: buildParent(ancestor),
+        restOffset: restOffset,
+      );
 
   @override
   Simulation? createBallisticSimulation(
     ScrollMetrics position, double velocity) {
-    if (velocity.abs() < 1 && position.pixels.abs() < 1) return null;
+    final rest = restOffset();
+    if (velocity.abs() < 1 && (position.pixels - rest).abs() < 1) return null;
     return SpringSimulation(
       const SpringDescription(mass: 1, stiffness: 80, damping: 10),
-      position.pixels, 0, velocity,
+      position.pixels, rest, velocity,
     );
   }
 }
+
 class _InfiniteTimelineState extends State<_InfiniteTimeline> {
   final _centerKey = UniqueKey();
   final _controller = ScrollController();
+  Timer? _ticker;
   double _travelled = 0;
+  int _hourOffset = 0;
+  int _lastCheckedMinute = DateTime.now().minute;
+  late final DateTime _startTime;
+  late final int _refHour;
+  double _markerX = 0;
+  bool _jumped = false;
+
+  double get _restOffset => _hourOffset * _barGap - _markerX + 7;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _startTime = now;
+    _refHour = now.hour;
+    _lastCheckedMinute = now.minute;
+    _ticker = Timer.periodic(const Duration(seconds: 5), (_) => _tickTimer());
+  }
 
   @override
   void dispose() {
+    _ticker?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _tickTimer() {
+    final now = DateTime.now();
+    if (now.minute == _lastCheckedMinute) return;
+    _lastCheckedMinute = now.minute;
+    final elapsed = now.difference(_startTime).inMinutes;
+    final expected = elapsed ~/ 60;
+    if (expected > _hourOffset) {
+      final delta = expected - _hourOffset;
+      setState(() => _hourOffset = expected);
+      _controller
+          .animateTo(
+            _restOffset,
+            duration: Duration(
+              milliseconds: (delta * 200 + 100).clamp(300, 1500),
+            ),
+            curve: Curves.easeOutCubic,
+          )
+          .catchError((_) {});
+    }
   }
 
   // don't cry lain
@@ -969,11 +1018,56 @@ class _InfiniteTimelineState extends State<_InfiniteTimeline> {
     return false;
   }
 
+  Color? _dotForHour(int hour, List<Alarm> alarms) {
+    bool normal = false;
+    bool muted = false;
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final tomorrowStart = todayStart.add(const Duration(days: 1));
+
+    for (final alarm in alarms) {
+      if (alarm.hour != hour) continue;
+      if (!alarm.enabled) { muted = true; continue; }
+      switch (alarm.repeat) {
+        case AlarmRepeat.daily:
+          normal = true;
+        case AlarmRepeat.weekdays:
+          if (now.weekday <= DateTime.friday) {
+            normal = true;
+          } else {
+            muted = true;
+          }
+        case AlarmRepeat.once:
+          final fire = alarm.nextFire(todayStart);
+          if (fire != null && fire.isBefore(tomorrowStart)) {
+            normal = true;
+          } else {
+            muted = true;
+          }
+      }
+    }
+    if (normal) return _screen;
+    if (muted) return const Color.fromARGB(92, 105, 116, 95);
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final alarms = AlarmScope.of(context).alarms;
+
     return LayoutBuilder(
       builder: (context, box) {
         final markerX = box.maxWidth * 0.16;
+        if (_markerX != markerX) {
+          _markerX = markerX;
+          if (!_jumped) {
+            _jumped = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _controller.jumpTo(_restOffset);
+            });
+          }
+        }
+
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -983,19 +1077,27 @@ class _InfiniteTimelineState extends State<_InfiniteTimeline> {
                 controller: _controller,
                 scrollDirection: Axis.horizontal,
                 center: _centerKey,
-                physics: const _SpringScrollPhysics(),
+                physics: _SpringScrollPhysics(
+                  restOffset: () => _restOffset,
+                ),
                 slivers: [
                   SliverFixedExtentList(
                     itemExtent: _barGap,
                     delegate: SliverChildBuilderDelegate(
-                      (context, i) => _Bar(dot: (i + 1) % 5 == 0),
+                      (context, i) {
+                        final hour = (_refHour - 1 - i) % 24;
+                        return _Bar(dotColor: _dotForHour(hour, alarms));
+                      },
                     ),
                   ),
                   SliverFixedExtentList(
                     key: _centerKey,
                     itemExtent: _barGap,
                     delegate: SliverChildBuilderDelegate(
-                      (context, i) => _Bar(dot: i % 5 == 0),
+                      (context, i) {
+                        final hour = (_refHour + i) % 24;
+                        return _Bar(dotColor: _dotForHour(hour, alarms));
+                      },
                     ),
                   ),
                 ],
@@ -1030,23 +1132,23 @@ class _InfiniteTimelineState extends State<_InfiniteTimeline> {
 }
 
 class _Bar extends StatelessWidget {
-  const _Bar({required this.dot});
+  const _Bar({this.dotColor});
 
-  final bool dot;
+  final Color? dotColor;
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _BarPainter(dot),
+      painter: _BarPainter(dotColor),
       child: const SizedBox.expand(),
     );
   }
 }
 
 class _BarPainter extends CustomPainter {
-  const _BarPainter(this.dot);
+  const _BarPainter(this.dotColor);
 
-  final bool dot;
+  final Color? dotColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1057,14 +1159,16 @@ class _BarPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     canvas.drawLine(Offset(x, 22), Offset(x, size.height), brush);
 
-    if (dot) {
-      brush.style = PaintingStyle.fill;
-      canvas.drawCircle(Offset(x, 6), 2.5, brush);
+    if (dotColor != null) {
+      brush
+        ..color = dotColor!
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(x, 6), dotColor == _screen ? 3.5 : 2.5, brush);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _BarPainter old) => old.dot != dot;
+  bool shouldRepaint(covariant _BarPainter old) => old.dotColor != dotColor;
 }
 
 class _MarkerPainter extends CustomPainter {
