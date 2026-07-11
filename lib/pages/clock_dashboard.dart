@@ -13,6 +13,7 @@ import '../services/device_usage.dart';
 import '../services/session_store.dart';
 import '../widgets/slide_up_route.dart';
 import '../widgets/tactile.dart';
+import 'screen_time_details_page.dart';
 import 'session_page.dart';
 import 'session_tabs.dart';
 import 'time_wheel_page.dart';
@@ -695,7 +696,12 @@ class _StatsBoardState extends State<_StatsBoard> {
         'SCREEN TIME',
         screenTimeLabel,
         screenTimeFraction,
-        _unavailable ? _openUsageSettings : null,
+        _unavailable
+            ? _openUsageSettings
+            : () => Navigator.push(
+              context,
+              slideUpRoute(const ScreenTimeDetailsPage()),
+            ),
       ),
       (
         'DISTRACTED',
@@ -779,7 +785,7 @@ class _StatRow extends StatelessWidget {
                   stat.$2,
                   style: TextStyle(
                     fontSize: fontSize,
-                    color: hasAction ? const Color(0xffe57373) : _screen,
+                    color: hasAction ? _screen : _screen,
                     height: 1.1,
                   ),
                 ),
@@ -789,7 +795,7 @@ class _StatRow extends StatelessWidget {
                     child: Icon(
                       Icons.settings,
                       size: fontSize * 0.9,
-                      color: const Color(0xffe57373),
+                      color: _screen,
                     ),
                   ),
               ],

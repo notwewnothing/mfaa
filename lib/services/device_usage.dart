@@ -21,6 +21,28 @@ class DeviceUsage {
     }
   }
 
+  static Future<List<({String appName, String packageName, int seconds})>>
+      appUsageSeconds(DateTime start, DateTime end) async {
+    if (!isSupported) return [];
+    try {
+      final infoList = await AppUsage().getAppUsage(start, end);
+      final result = infoList
+          .where((info) => info.usage.inSeconds > 0)
+          .map(
+            (info) => (
+              appName: info.appName,
+              packageName: info.packageName,
+              seconds: info.usage.inSeconds,
+            ),
+          )
+          .toList();
+      result.sort((a, b) => b.seconds.compareTo(a.seconds));
+      return result;
+    } catch (_) {
+      return [];
+    }
+  }
+
   static int computeDistractedSeconds({
     required int phoneUsageIncrease,
     required int inAppSeconds,

@@ -36,6 +36,51 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "mfaaa/app_icons").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getAppIcon" -> {
+                    val packageName = call.argument<String>("packageName") ?: run {
+                        result.error("NO_PACKAGE", "packageName is required", null)
+                        return@setMethodCallHandler
+                    }
+                    val iconSize = 72
+                    try {
+                        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                        val activities = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            packageManager.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0))
+                        } else {
+                            @Suppress("DEPRECATION")
+                            packageManager.queryIntentActivities(intent, 0)
+                        }
+                        var drawable: android.graphics.drawable.Drawable? = null
+                        for (info in activities) {
+                            if (info.activityInfo?.packageName == packageName) {
+                                drawable = info.loadIcon(packageManager)
+                                break
+                            }
+                        }
+                        if (drawable == null) {
+                            result.success(null)
+                            return@setMethodCallHandler
+                        }
+                        val bitmap = android.graphics.Bitmap.createBitmap(
+                            iconSize, iconSize,
+                            android.graphics.Bitmap.Config.ARGB_8888
+                        )
+                        val canvas = android.graphics.Canvas(bitmap)
+                        drawable.setBounds(0, 0, iconSize, iconSize)
+                        drawable.draw(canvas)
+                        val stream = java.io.ByteArrayOutputStream()
+                        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
+                        result.success(stream.toByteArray())
+                    } catch (e: Exception) {
+                        android.util.Log.w("AppIcons", "getAppIcon failed for $packageName: ${e.message}")
+                        result.success(null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
     private fun getInstalledApps(): List<Map<String, String>> {
