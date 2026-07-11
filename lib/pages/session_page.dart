@@ -281,6 +281,7 @@ class _SessionPageState extends State<SessionPage> with WidgetsBindingObserver {
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+            // overflow fix
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
