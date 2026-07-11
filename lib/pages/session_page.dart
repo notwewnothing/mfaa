@@ -9,6 +9,7 @@ import '../services/app_blocker.dart';
 import '../services/device_usage.dart';
 import '../services/session_store.dart';
 import '../widgets/tactile.dart';
+import 'alarm_ring_page.dart';
 
 const _mint = Color(0xffa8c889);
 const _muted = Color(0xff69745f);
@@ -37,6 +38,7 @@ class _SessionPageState extends State<SessionPage> with WidgetsBindingObserver {
   bool _onBreak = false;
   bool _paused = false;
   bool _completed = false;
+  int _remainingSec = 0;
   bool _blink = true;
   bool _appInForeground = true;
   int? _phoneUsageAtStart;
@@ -116,6 +118,14 @@ class _SessionPageState extends State<SessionPage> with WidgetsBindingObserver {
         _pausedSec++;
         return;
       }
+
+      if (_remainingSec > 0) {
+        _remainingSec--;
+        _focusSec++;
+        if (_remainingSec <= 0) _complete();
+        return;
+      }
+
       _phaseSec++;
       if (!_onBreak) _focusSec++;
 
@@ -147,6 +157,48 @@ class _SessionPageState extends State<SessionPage> with WidgetsBindingObserver {
     SystemSound.play(SystemSoundType.alert);
     _completed = true;
     unawaited(_syncBlocking());
+    if (widget.kind == SessionKind.sleep) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showSleepEndRing();
+      });
+    }
+  }
+
+  // how did i forgor this :/
+  Future<void> _showSleepEndRing() async {
+    final action = await Navigator.of(context).push<String>(
+      PageRouteBuilder(
+        fullscreenDialog: true,
+        transitionDuration: const Duration(milliseconds: 420),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (_, _, _) => const AlarmRingPage(sleepEndMode: true),
+        transitionsBuilder: (_, animation, _, child) {
+          final eased = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: eased,
+            child: ScaleTransition(
+              scale: Tween(begin: 1.08, end: 1.0).animate(eased),
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
+    if (!mounted) return;
+    if (action == 'stop') {
+      final store = SessionScope.of(context);
+      await _stop(context, store);
+    } else if (action == 'snooze') {
+      setState(() {
+        _remainingSec = 600;
+        _completed = false;
+        _paused = false;
+      });
+    }
   }
 
   Future<bool> _strictAllows(BuildContext context, SessionStore store) async {
@@ -233,6 +285,11 @@ class _SessionPageState extends State<SessionPage> with WidgetsBindingObserver {
   }
 
   String get _display {
+    if (_remainingSec > 0) {
+      final big = _remainingSec ~/ 60;
+      final small = _remainingSec % 60;
+      return '${big.toString().padLeft(2, '0')}:${small.toString().padLeft(2, '0')}';
+    }
     final seconds = switch (_mode) {
       SessionMode.endless => _phaseSec,
       SessionMode.pomodoro =>
@@ -252,6 +309,10 @@ class _SessionPageState extends State<SessionPage> with WidgetsBindingObserver {
   }
 
   String get _modeLabel {
+    if (_remainingSec > 0) {
+      final min = (_remainingSec / 60).ceil();
+      return 'SNOOZING — $min MIN LEFT';
+    }
     if (_completed) return 'SESSION COMPLETE';
     if (_paused) return 'PAUSED — COUNTS AS DISTRACTED';
     return switch (_mode) {
@@ -1023,6 +1084,8 @@ class _BlockedAppsDialogState extends State<_BlockedAppsDialog> {
     );
   }
 }
+// I am the number one most impactfull programmer of our generation
+// Goo Goo
 
 class _DialogChip extends StatelessWidget {
   const _DialogChip({required this.label, required this.onTap});

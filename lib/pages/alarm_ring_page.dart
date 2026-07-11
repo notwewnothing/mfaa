@@ -12,9 +12,14 @@ const _muted = Color(0xff69745f);
 const _stopBg = Color(0xff98ac84);
 
 class AlarmRingPage extends StatefulWidget {
-  const AlarmRingPage({super.key, required this.alarm});
+  const AlarmRingPage({
+    super.key,
+    this.alarm,
+    this.sleepEndMode = false,
+  }) : assert(alarm != null || sleepEndMode);
 
-  final Alarm alarm;
+  final Alarm? alarm;
+  final bool sleepEndMode;
 
   @override
   State<AlarmRingPage> createState() => _AlarmRingPageState();
@@ -42,21 +47,40 @@ class _AlarmRingPageState extends State<AlarmRingPage> {
 
   Future<void> _snooze(BuildContext context) async {
     HapticFeedback.mediumImpact();
+    if (widget.sleepEndMode) {
+      if (context.mounted) Navigator.of(context).pop('snooze');
+      return;
+    }
     final store = AlarmScope.of(context);
-    await store.snooze(widget.alarm);
+    await store.snooze(widget.alarm!);
     if (context.mounted) Navigator.of(context).pop();
   }
 
   Future<void> _stop(BuildContext context) async {
     HapticFeedback.heavyImpact();
+    if (widget.sleepEndMode) {
+      if (context.mounted) Navigator.of(context).pop('stop');
+      return;
+    }
     final store = AlarmScope.of(context);
-    await store.stopRinging(widget.alarm);
+    await store.stopRinging(widget.alarm!);
     if (context.mounted) Navigator.of(context).pop();
   }
 
+  String _formatTime(DateTime dt) =>
+      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
   @override
   Widget build(BuildContext context) {
-    final alarm = widget.alarm;
+    final displayTime = widget.sleepEndMode
+        ? _formatTime(DateTime.now())
+        : widget.alarm!.timeLabel24;
+    final subtitle = widget.sleepEndMode
+        ? 'SLEEP SESSION COMPLETE'
+        : widget.alarm!.sound;
+    final snoozeLabel = widget.sleepEndMode
+        ? 'SNOOZE 10 MIN'
+        : 'SNOOZE ${widget.alarm!.snoozeMinutes} MIN';
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -76,7 +100,7 @@ class _AlarmRingPageState extends State<AlarmRingPage> {
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      alarm.timeLabel24,
+                      displayTime,
                       style: const TextStyle(
                         fontSize: 160,
                         color: _mint,
@@ -88,7 +112,7 @@ class _AlarmRingPageState extends State<AlarmRingPage> {
               ),
               const SizedBox(height: 12),
               Text(
-                alarm.sound,
+                subtitle,
                 style: const TextStyle(fontSize: 26, color: _muted),
               ),
               const Spacer(),
@@ -105,7 +129,7 @@ class _AlarmRingPageState extends State<AlarmRingPage> {
                       shape: const StadiumBorder(),
                     ),
                     child: Text(
-                      'SNOOZE ${alarm.snoozeMinutes} MIN',
+                      snoozeLabel,
                       style: const TextStyle(fontSize: 26),
                     ),
                   ),
