@@ -11,6 +11,16 @@
 - **Screen Time** — Per-day phone usage breakdown by app.
 - **Live Dashboard** — Clock, alarm cards, stats (focus score, sleep score, distraction %).
 
+## Screenshots
+
+<p float="left">
+  <img src="screenshots/home.png" width="200" />
+  <img src="screenshots/picker.png" width="200" />
+  <img src="screenshots/ring.png" width="200" />
+  <img src="screenshots/focus_tab.png" width="200" />
+  <img src="screenshots/sleep_tab.png" width="200" />
+</p>
+
 ## Packages
 
 | Package | Purpose |
