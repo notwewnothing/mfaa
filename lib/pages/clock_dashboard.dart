@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/physics.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
@@ -930,7 +931,23 @@ class _InfiniteTimeline extends StatefulWidget {
   @override
   State<_InfiniteTimeline> createState() => _InfiniteTimelineState();
 } // why are you crying lain
+class _SpringScrollPhysics extends ScrollPhysics {
+  const _SpringScrollPhysics({super.parent});
 
+  @override
+  _SpringScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      _SpringScrollPhysics(parent: buildParent(ancestor));
+
+  @override
+  Simulation? createBallisticSimulation(
+    ScrollMetrics position, double velocity) {
+    if (velocity.abs() < 1 && position.pixels.abs() < 1) return null;
+    return SpringSimulation(
+      const SpringDescription(mass: 1, stiffness: 80, damping: 10),
+      position.pixels, 0, velocity,
+    );
+  }
+}
 class _InfiniteTimelineState extends State<_InfiniteTimeline> {
   final _centerKey = UniqueKey();
   final _controller = ScrollController();
@@ -966,7 +983,7 @@ class _InfiniteTimelineState extends State<_InfiniteTimeline> {
                 controller: _controller,
                 scrollDirection: Axis.horizontal,
                 center: _centerKey,
-                physics: const BouncingScrollPhysics(),
+                physics: const _SpringScrollPhysics(),
                 slivers: [
                   SliverFixedExtentList(
                     itemExtent: _barGap,
