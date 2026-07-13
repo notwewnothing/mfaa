@@ -252,6 +252,7 @@ class _ClockDashboardState extends State<ClockDashboard> {
                 for (var i = 0; i < _navTabs.length; i++)
                   Expanded(
                       child: _NavItem(
+                      landscape: true,
                       icon: _navTabs[i].$1,
                       label: _navTabs[i].$2,
                       selected: _selectedTab == i,
@@ -711,12 +712,14 @@ class _NavItem extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.landscape = false,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final bool landscape;
 
   @override
   Widget build(BuildContext context) {
@@ -735,7 +738,7 @@ class _NavItem extends StatelessWidget {
             final color = Color.lerp(_muted, _screen, t)!;
             return DecoratedBox(
               decoration: BoxDecoration(
-                color: _screen.withValues(alpha: 0.0 * t),
+                color: _screen.withValues(alpha: (landscape ? 0.0 : 0.12) * t),
                 borderRadius: const BorderRadius.all(Radius.circular(28)),
                 
               ),
