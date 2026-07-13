@@ -119,7 +119,7 @@ class _ClockDashboardState extends State<ClockDashboard> {
               children: [
                 SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(6, 6, 0, 6),
+                    padding: const EdgeInsets.fromLTRB(6, 0, 0, 0),
                     child: _landscapeDock(context, store),
                   ),
                 ),
@@ -127,7 +127,7 @@ class _ClockDashboardState extends State<ClockDashboard> {
                   child: SafeArea(
                     top: true, bottom: true, left: false, right: true,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 6, 6, 6),
+                      padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 280),
                         switchInCurve: Curves.easeOutCubic,
@@ -373,8 +373,8 @@ class _ClockDashboardState extends State<ClockDashboard> {
       decoration: const BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(35),
-          topRight: Radius.circular(35),
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
           bottomLeft: Radius.circular(20),
           bottomRight: Radius.circular(20),
         ),
@@ -494,10 +494,10 @@ class _ClockDashboardState extends State<ClockDashboard> {
       decoration: const BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(35),
-          topRight: Radius.circular(35),
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
+          topLeft: Radius.circular(26),
+          topRight: Radius.circular(26),
+          bottomLeft: Radius.circular(26),
+          bottomRight: Radius.circular(26),
         ),
       ),
       child: Center(
@@ -528,10 +528,10 @@ class _ClockDashboardState extends State<ClockDashboard> {
       decoration: const BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(35),
-          topRight: Radius.circular(35),
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
+          topLeft: Radius.circular(26),
+          topRight: Radius.circular(26),
+          bottomLeft: Radius.circular(26),
+          bottomRight: Radius.circular(26),
         ),
       ),
       child: Padding(
@@ -1037,7 +1037,7 @@ class _StatRow extends StatelessWidget {
                 Text(
                   stat.$2,
                   style: TextStyle(
-                    fontSize: fontSize,
+                    fontSize: fontSize ,
                     color: hasAction ? _screen : _screen,
                     height: 1.1,
                   ),

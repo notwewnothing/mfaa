@@ -140,12 +140,7 @@ class _ScreenTimeDetailsPageState extends State<ScreenTimeDetailsPage>
             width: double.infinity,
             decoration: const BoxDecoration(
               color: Colors.black,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(35),
-                topRight: Radius.circular(35),
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
+              borderRadius: BorderRadius.all(Radius.circular(26)),
             ),
             child: Opacity(
               opacity: 1 - dragFraction * 0.3,
@@ -270,6 +265,7 @@ class _ScreenTimeDetailsPageState extends State<ScreenTimeDetailsPage>
       }),
     );
   }
+
 
   Widget _totalHeader() {
     final h = _totalSeconds ~/ 3600;
