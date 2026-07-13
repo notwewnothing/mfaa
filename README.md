@@ -18,7 +18,7 @@
   <img src="screenshots/picker.png" width="200" />
   <img src="screenshots/ring.png" width="200" />
   <img src="screenshots/focus_tab.png" width="200" />
-  <img src="screenshots/sleep_tab.png" width="200" />
+
 </p>
 
 ## Packages
