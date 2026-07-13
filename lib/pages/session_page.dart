@@ -343,185 +343,384 @@ class _SessionPageState extends State<SessionPage> with WidgetsBindingObserver {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
             // overflow fix
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.kind == SessionKind.focus
-                      ? 'FOCUS SESSION'
-                      : 'SLEEP SESSION',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: _muted,
-                    letterSpacing: 3,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 400),
-                  opacity: _paused ? 0.35 : 1,
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FittedBox(
-                      fit: BoxFit.fitWidth,
-                      child: Builder(
-                        builder: (context) {
-                          const bgStr = '88:88';
-                          final fgStr = _display;
-                          final showColon = _blink || _paused || _completed;
-
-                          return Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ...List.generate(bgStr.length, (i) {
-                                final isColon = bgStr[i] == ':';
-                                final isActive = !isColon || showColon;
-                                final isOne = fgStr[i] == '1';
-
-                                return Stack(
-                                  alignment: Alignment.centerRight,
-                                  children: [
-                                    Text(
-                                      bgStr[i],
-                                      style: TextStyle(
-                                        fontSize: 150,
-                                        color: _dim.withValues(alpha: 0.15),
-                                        height: 1.6,
-                                      ),
-                                    ),
-                                    Transform.translate(
-                                      offset: isOne
-                                          ? const Offset(7, 0)
-                                          : Offset.zero,
-                                      child: Text(
-                                        fgStr[i],
-                                        style: TextStyle(
-                                          fontSize: 150,
-                                          color: isActive
-                                              ? _mint
-                                              : Colors.transparent,
-                                          height: 1,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              }),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: Text(
-                    _modeLabel,
-                    key: ValueKey(_modeLabel),
-                    style: const TextStyle(fontSize: 14, color: _muted),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                _BlockCard(store: store),
-                const SizedBox(height: 18),
-                Text(
-                  'TODAY — ${tasks.where((t) => t.done).length}/${tasks.length} DONE',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: _muted,
-                    letterSpacing: 3,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Expanded(
-                  child: ListView(
+            child: OrientationBuilder(
+              builder: (context, orientation) {
+                if (orientation == Orientation.landscape) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final task in tasks)
-                        _TaskRow(
-                          task: task,
-                          onToggle: () {
-                            HapticFeedback.selectionClick();
-                            store.toggleTask(task);
-                          },
-                          onRemove: () {
-                            HapticFeedback.heavyImpact();
-                            store.removeTask(task);
-                          },
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.kind == SessionKind.focus
+                                  ? 'FOCUS SESSION'
+                                  : 'SLEEP SESSION',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: _muted,
+                                letterSpacing: 3,
+                              ),
+                            ),
+                            const SizedBox(height: 0),
+                            AnimatedOpacity(
+                              duration: const Duration(milliseconds: 400),
+                              opacity: _paused ? 0.35 : 1,
+                              child: FittedBox(
+                                fit: BoxFit.contain,
+                                child: Builder(
+                                  builder: (context) {
+                                    const bgStr = '88:88';
+                                    final fgStr = _display;
+                                    final showColon = _blink || _paused || _completed;
+
+                                    return Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        ...List.generate(bgStr.length, (i) {
+                                          final isColon = bgStr[i] == ':';
+                                          final isActive = !isColon || showColon;
+                                          final isOne = fgStr[i] == '1';
+
+                                          return Stack(
+                                            alignment: Alignment.centerRight,
+                                            children: [
+                                              Text(
+                                                bgStr[i],
+                                                style: TextStyle(
+                                                  fontSize: 200,
+                                                  color: _dim.withValues(alpha: 0.15),
+                                                  height: 1,
+                                                ),
+                                              ),
+                                              Transform.translate(
+                                                offset: isOne
+                                                    ? const Offset(7, 0)
+                                                    : Offset.zero,
+                                                child: Text(
+                                                  fgStr[i],
+                                                  style: TextStyle(
+                                                    fontSize: 200,
+                                                    color: isActive
+                                                        ? _mint
+                                                        : Colors.transparent,
+                                                    height: 1,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        }),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 250),
+                              child: Text(
+                                _modeLabel,
+                                key: ValueKey(_modeLabel),
+                                style: const TextStyle(fontSize: 14, color: _muted),
+                              ),
+                            ),
+                          ],
                         ),
-                      _AddTaskButton(store: store),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _BlockCard(store: store),
+                            const SizedBox(height: 12),
+                            Text(
+                              'TODAY — ${tasks.where((t) => t.done).length}/${tasks.length} DONE',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: _muted,
+                                letterSpacing: 3,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Expanded(
+                              child: ListView(
+                                children: [
+                                  for (final task in tasks)
+                                    _TaskRow(
+                                      task: task,
+                                      onToggle: () {
+                                        HapticFeedback.selectionClick();
+                                        store.toggleTask(task);
+                                      },
+                                      onRemove: () {
+                                        HapticFeedback.heavyImpact();
+                                        store.removeTask(task);
+                                      },
+                                    ),
+                                  _AddTaskButton(store: store),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Tactile(
+                                  pressedScale: 0.9,
+                                  child: IconButton(
+                                    onPressed: () => _stop(context, store),
+                                    icon: Icon(
+                                      _completed ? Icons.check : Icons.stop,
+                                      size: 30,
+                                      color: _mint,
+                                    ),
+                                    style: IconButton.styleFrom(
+                                      fixedSize: const Size(64, 64),
+                                      backgroundColor: _stopBg,
+                                    ),
+                                  ),
+                                ),
+                                Tactile(
+                                  pressedScale: 0.9,
+                                  child: IconButton(
+                                    onPressed: _completed
+                                        ? null
+                                        : () => _togglePause(context, store),
+                                    icon: AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 200),
+                                      transitionBuilder: (child, animation) =>
+                                          ScaleTransition(scale: animation, child: child),
+                                      child: Icon(
+                                        _paused ? Icons.play_arrow : Icons.pause,
+                                        key: ValueKey(_paused),
+                                        size: 40,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    style: IconButton.styleFrom(
+                                      fixedSize: const Size(80, 80),
+                                      backgroundColor: _completed
+                                          ? _dim.withValues(alpha: 0.4)
+                                          : const Color(0xff98ac84),
+                                    ),
+                                  ),
+                                ),
+                                if (_mode == SessionMode.pomodoro && !_completed)
+                                  Tactile(
+                                    pressedScale: 0.9,
+                                    child: IconButton(
+                                      onPressed: () {
+                                        HapticFeedback.mediumImpact();
+                                        setState(_advancePhase);
+                                      },
+                                      icon: const Icon(
+                                        Icons.fast_forward,
+                                        size: 30,
+                                        color: _mint,
+                                      ),
+                                      style: IconButton.styleFrom(
+                                        fixedSize: const Size(64, 64),
+                                        backgroundColor: _stopBg,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const SizedBox(width: 64, height: 64),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Tactile(
-                      pressedScale: 0.9,
-                      child: IconButton(
-                        onPressed: () => _stop(context, store),
-                        icon: Icon(
-                          _completed ? Icons.check : Icons.stop,
-                          size: 30,
-                          color: _mint,
-                        ),
-                        style: IconButton.styleFrom(
-                          fixedSize: const Size(64, 64),
-                          backgroundColor: _stopBg,
+                    Text(
+                      widget.kind == SessionKind.focus
+                          ? 'FOCUS SESSION'
+                          : 'SLEEP SESSION',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: _muted,
+                        letterSpacing: 3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    AnimatedOpacity(
+                      duration: const Duration(milliseconds: 400),
+                      opacity: _paused ? 0.35 : 1,
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: FittedBox(
+                          fit: BoxFit.fitWidth,
+                          child: Builder(
+                            builder: (context) {
+                              const bgStr = '88:88';
+                              final fgStr = _display;
+                              final showColon = _blink || _paused || _completed;
+
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ...List.generate(bgStr.length, (i) {
+                                    final isColon = bgStr[i] == ':';
+                                    final isActive = !isColon || showColon;
+                                    final isOne = fgStr[i] == '1';
+
+                                    return Stack(
+                                      alignment: Alignment.centerRight,
+                                      children: [
+                                        Text(
+                                          bgStr[i],
+                                          style: TextStyle(
+                                            fontSize: 150,
+                                            color: _dim.withValues(alpha: 0.15),
+                                            height: 1.6,
+                                          ),
+                                        ),
+                                        Transform.translate(
+                                          offset: isOne
+                                              ? const Offset(7, 0)
+                                              : Offset.zero,
+                                          child: Text(
+                                            fgStr[i],
+                                            style: TextStyle(
+                                              fontSize: 150,
+                                              color: isActive
+                                                  ? _mint
+                                                  : Colors.transparent,
+                                              height: 1,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }),
+                                ],
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
-                    Tactile(
-                      pressedScale: 0.9,
-                      child: IconButton(
-                        onPressed: _completed
-                            ? null
-                            : () => _togglePause(context, store),
-                        icon: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          transitionBuilder: (child, animation) =>
-                              ScaleTransition(scale: animation, child: child),
-                          child: Icon(
-                            _paused ? Icons.play_arrow : Icons.pause,
-                            key: ValueKey(_paused),
-                            size: 40,
-                            color: Colors.black,
-                          ),
-                        ),
-                        style: IconButton.styleFrom(
-                          fixedSize: const Size(80, 80),
-                          backgroundColor: _completed
-                              ? _dim.withValues(alpha: 0.4)
-                              : const Color(0xff98ac84),
-                        ),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: Text(
+                        _modeLabel,
+                        key: ValueKey(_modeLabel),
+                        style: const TextStyle(fontSize: 14, color: _muted),
                       ),
                     ),
-                    if (_mode == SessionMode.pomodoro && !_completed)
-                      Tactile(
-                        pressedScale: 0.9,
-                        child: IconButton(
-                          onPressed: () {
-                            HapticFeedback.mediumImpact();
-                            setState(_advancePhase);
-                          },
-                          icon: const Icon(
-                            Icons.fast_forward,
-                            size: 30,
-                            color: _mint,
-                          ),
-                          style: IconButton.styleFrom(
-                            fixedSize: const Size(64, 64),
-                            backgroundColor: _stopBg,
+                    const SizedBox(height: 18),
+                    _BlockCard(store: store),
+                    const SizedBox(height: 18),
+                    Text(
+                      'TODAY — ${tasks.where((t) => t.done).length}/${tasks.length} DONE',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: _muted,
+                        letterSpacing: 3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Expanded(
+                      child: ListView(
+                        children: [
+                          for (final task in tasks)
+                            _TaskRow(
+                              task: task,
+                              onToggle: () {
+                                HapticFeedback.selectionClick();
+                                store.toggleTask(task);
+                              },
+                              onRemove: () {
+                                HapticFeedback.heavyImpact();
+                                store.removeTask(task);
+                              },
+                            ),
+                          _AddTaskButton(store: store),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Tactile(
+                          pressedScale: 0.9,
+                          child: IconButton(
+                            onPressed: () => _stop(context, store),
+                            icon: Icon(
+                              _completed ? Icons.check : Icons.stop,
+                              size: 30,
+                              color: _mint,
+                            ),
+                            style: IconButton.styleFrom(
+                              fixedSize: const Size(64, 64),
+                              backgroundColor: _stopBg,
+                            ),
                           ),
                         ),
-                      )
-                    else
-                      const SizedBox(width: 64, height: 64),
+                        Tactile(
+                          pressedScale: 0.9,
+                          child: IconButton(
+                            onPressed: _completed
+                                ? null
+                                : () => _togglePause(context, store),
+                            icon: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              transitionBuilder: (child, animation) =>
+                                  ScaleTransition(scale: animation, child: child),
+                              child: Icon(
+                                _paused ? Icons.play_arrow : Icons.pause,
+                                key: ValueKey(_paused),
+                                size: 40,
+                                color: Colors.black,
+                              ),
+                            ),
+                            style: IconButton.styleFrom(
+                              fixedSize: const Size(80, 80),
+                              backgroundColor: _completed
+                                  ? _dim.withValues(alpha: 0.4)
+                                  : const Color(0xff98ac84),
+                            ),
+                          ),
+                        ),
+                        if (_mode == SessionMode.pomodoro && !_completed)
+                          Tactile(
+                            pressedScale: 0.9,
+                            child: IconButton(
+                              onPressed: () {
+                                HapticFeedback.mediumImpact();
+                                setState(_advancePhase);
+                              },
+                              icon: const Icon(
+                                Icons.fast_forward,
+                                size: 30,
+                                color: _mint,
+                              ),
+                              style: IconButton.styleFrom(
+                                fixedSize: const Size(64, 64),
+                                backgroundColor: _stopBg,
+                              ),
+                            ),
+                          )
+                        else
+                          const SizedBox(width: 64, height: 64),
+                      ],
+                    ),
                   ],
-                ),
-              ],
+                );
+              },
             ),
           ),
         ),

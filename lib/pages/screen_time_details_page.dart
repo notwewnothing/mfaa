@@ -153,27 +153,65 @@ class _ScreenTimeDetailsPageState extends State<ScreenTimeDetailsPage>
                 offset: Offset(0, _effectiveOffset),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-                  child: Column(
-                    children: [
-                      GestureDetector(
-                        onVerticalDragStart: _onDragStart,
-                        onVerticalDragUpdate: _onDragUpdate,
-                        onVerticalDragEnd: _onDragEnd,
-                        behavior: HitTestBehavior.opaque,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                  child: OrientationBuilder(
+                    builder: (context, orientation) {
+                      if (orientation == Orientation.landscape) {
+                        return Row(
                           children: [
-                            _dragHandle(),
-                            const SizedBox(height: 20),
-                            _dateRow(today),
-                            const SizedBox(height: 24),
-                            _totalHeader(),
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                children: [
+                                  GestureDetector(
+                                    onVerticalDragStart: _onDragStart,
+                                    onVerticalDragUpdate: _onDragUpdate,
+                                    onVerticalDragEnd: _onDragEnd,
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _dragHandle(),
+                                        const SizedBox(height: 20),
+                                        _dateRow(today),
+                                        const SizedBox(height: 24),
+                                        _totalHeader(),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 3,
+                              child: _appList(),
+                            ),
                           ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Expanded(child: _appList()),
-                    ],
+                        );
+                      }
+                      return Column(
+                        children: [
+                          GestureDetector(
+                            onVerticalDragStart: _onDragStart,
+                            onVerticalDragUpdate: _onDragUpdate,
+                            onVerticalDragEnd: _onDragEnd,
+                            behavior: HitTestBehavior.opaque,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _dragHandle(),
+                                const SizedBox(height: 20),
+                                _dateRow(today),
+                                const SizedBox(height: 24),
+                                _totalHeader(),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Expanded(child: _appList()),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),

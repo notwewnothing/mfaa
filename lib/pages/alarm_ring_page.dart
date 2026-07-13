@@ -87,9 +87,94 @@ class _AlarmRingPageState extends State<AlarmRingPage> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
+          child: OrientationBuilder(
+            builder: (context, orientation) {
+              if (orientation == Orientation.landscape) {
+                return _landscapeBody(
+                  displayTime, subtitle, snoozeLabel);
+              }
+              return Column(
+                children: [
+                  const Spacer(),
+                  AnimatedScale(
+                    scale: _bright ? 1 : 0.96,
+                    duration: const Duration(milliseconds: 650),
+                    curve: Curves.easeInOut,
+                    child: AnimatedOpacity(
+                      opacity: _bright ? 1 : 0.25,
+                      duration: const Duration(milliseconds: 350),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          displayTime,
+                          style: const TextStyle(
+                            fontSize: 160,
+                            color: _mint,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 26, color: _muted),
+                  ),
+                  const Spacer(),
+                  Tactile(
+                    pressedScale: 0.97,
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 72,
+                      child: FilledButton(
+                        onPressed: () => _snooze(context),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xff36402b),
+                          foregroundColor: _mint,
+                          shape: const StadiumBorder(),
+                        ),
+                        child: Text(
+                          snoozeLabel,
+                          style: const TextStyle(fontSize: 26),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Tactile(
+                    pressedScale: 0.97,
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 72,
+                      child: FilledButton(
+                        onPressed: () => _stop(context),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _stopBg,
+                          foregroundColor: Colors.black,
+                          shape: const StadiumBorder(),
+                        ),
+                        child: const Text('STOP', style: TextStyle(fontSize: 28)),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _landscapeBody(String displayTime, String subtitle, String snoozeLabel) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 3,
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Spacer(),
               AnimatedScale(
                 scale: _bright ? 1 : 0.96,
                 duration: const Duration(milliseconds: 650),
@@ -115,7 +200,15 @@ class _AlarmRingPageState extends State<AlarmRingPage> {
                 subtitle,
                 style: const TextStyle(fontSize: 26, color: _muted),
               ),
-              const Spacer(),
+            ],
+          ),
+        ),
+        const SizedBox(width: 24),
+        Expanded(
+          flex: 2,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
               Tactile(
                 pressedScale: 0.97,
                 child: SizedBox(
@@ -155,7 +248,7 @@ class _AlarmRingPageState extends State<AlarmRingPage> {
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 }

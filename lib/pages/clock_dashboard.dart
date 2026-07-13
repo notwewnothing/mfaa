@@ -112,54 +112,178 @@ class _ClockDashboardState extends State<ClockDashboard> {
 
     return Scaffold(
       backgroundColor: _screen,
-      body: Column(
-        children: [
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 280),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              layoutBuilder: (current, previous) => Stack(
-                fit: StackFit.expand,
-                children: [...previous, ?current],
-              ),
-              transitionBuilder: (child, animation) => FadeTransition(
-                opacity: animation,
-                child: SlideTransition(
-                  position: Tween(
-                    begin: const Offset(0, 0.03),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
+      body: OrientationBuilder(
+        builder: (context, orientation) {
+          if (orientation == Orientation.landscape) {
+            return Row(
+              children: [
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(6, 6, 0, 6),
+                    child: _landscapeDock(context, store),
+                  ),
+                ),
+                Expanded(
+                  child: SafeArea(
+                    top: true, bottom: true, left: false, right: true,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 6, 6, 6),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 280),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        layoutBuilder: (current, previous) => Stack(
+                          fit: StackFit.expand,
+                          children: [...previous, ?current],
+                        ),
+                        transitionBuilder: (child, animation) => FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween(
+                              begin: const Offset(0, 0.03),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: child,
+                          ),
+                        ),
+                        child: KeyedSubtree(
+                          key: ValueKey(_selectedTab),
+                          child: switch (_selectedTab) {
+                             0 => Padding(
+                               padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+                               child: _landscapeHomeBody(context, store, today, topInset),
+                             ),
+                            1 => const Padding(
+                              padding: EdgeInsets.fromLTRB(0, 0, 0, 0),
+                              child: FocusPage(),
+                            ),
+                            2 => const Padding(
+                              padding: EdgeInsets.fromLTRB(0, 0, 0, 0),
+                              child: SleepPage(),
+                            ),
+                            _ => Padding(
+                              padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+                              child: _placeholderPanel(_navTabs[_selectedTab]),
+                            ),
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+          return Column(
+            children: [
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 280),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  layoutBuilder: (current, previous) => Stack(
+                    fit: StackFit.expand,
+                    children: [...previous, ?current],
+                  ),
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween(
+                        begin: const Offset(0, 0.03),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                  child: KeyedSubtree(
+                    key: ValueKey(_selectedTab),
+                    child: switch (_selectedTab) {
+                      0 => _homeBody(context, store, today, topInset),
+                      1 => const Padding(
+                        padding: EdgeInsets.fromLTRB(10, 10, 10, 6),
+                        child: FocusPage(),
+                      ),
+                      2 => const Padding(
+                        padding: EdgeInsets.fromLTRB(10, 10, 10, 6),
+                        child: SleepPage(),
+                      ),
+                      _ => Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+                        child: _placeholderPanel(_navTabs[_selectedTab]),
+                      ),
+                    },
+                  ),
                 ),
               ),
-              child: KeyedSubtree(
-                key: ValueKey(_selectedTab),
-                child: switch (_selectedTab) {
-                  0 => _homeBody(context, store, today, topInset),
-                  1 => const Padding(
-                    padding: EdgeInsets.fromLTRB(10, 10, 10, 6),
-                    child: FocusPage(),
-                  ),
-                  2 => const Padding(
-                    padding: EdgeInsets.fromLTRB(10, 10, 10, 6),
-                    child: SleepPage(),
-                  ),
-                  _ => Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
-                    child: _placeholderPanel(_navTabs[_selectedTab]),
-                  ),
-                },
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+                  child: _dock(context, store),
+                ),
               ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _landscapeDock(BuildContext context, AlarmStore store) {
+    final action = switch (_selectedTab) {
+      0 => (Icons.add, () => _addAlarm(context)),
+      1 => (Icons.play_arrow, () => _startSession(context, SessionKind.focus)),
+      2 => (Icons.play_arrow, () => _startSession(context, SessionKind.sleep)),
+      _ => null,
+    };
+
+    return Container(
+      width: 80,
+      decoration: const BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.all(Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+      child: Column(
+        children: [
+          Expanded(
+            child: Column(
+              children: [
+                for (var i = 0; i < _navTabs.length; i++)
+                  Expanded(
+                      child: _NavItem(
+                      icon: _navTabs[i].$1,
+                      label: _navTabs[i].$2,
+                      selected: _selectedTab == i,
+                      onTap: () {
+                        if (i != _selectedTab) {
+                          HapticFeedback.selectionClick();
+                          setState(() => _selectedTab = i);
+                        }
+                      },
+                    ),
+                  ),
+              ],
             ),
           ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
-              child: _dock(context, store),
-            ),
-          ),
+          if (action != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Tactile(
+                pressedScale: 0.9,
+                child: IconButton(
+                  onPressed: action.$2,
+                  icon: Icon(action.$1, color: _screen),
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xff36402b),
+                    fixedSize: const Size(56, 56),
+                    shape: const CircleBorder(),
+                  ),
+                ),
+              ),
+            )
+          else
+            const SizedBox(height: 56),
         ],
       ),
     );
@@ -233,6 +357,134 @@ class _ClockDashboardState extends State<ClockDashboard> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _landscapeHomeBody(
+    BuildContext context,
+    AlarmStore store,
+    int today,
+    double topInset,
+  ) {
+    final alarms = store.alarms;
+
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(35),
+          topRight: Radius.circular(35),
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(14, topInset + 4, 14, 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: 3,
+              child: Column(
+                children: [
+                  Flexible(
+                    flex: 3,
+                    child: LayoutBuilder(
+                      builder: (context, box) => FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: SizedBox(
+                          width: box.maxWidth,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const _LiveClock(),
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                child: Text(
+                                  store.nextAlarmSubtitle,
+                                  key: ValueKey(store.nextAlarmSubtitle),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    color: _muted,
+                                    height: -4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(child: _InfiniteTimeline()),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: Column(
+                children: [
+                  const Expanded(flex: 2, child: _StatsBoard()),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      for (var i = 0; i < _week.length; i++)
+                        AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 350),
+                          curve: Curves.easeOut,
+                          style: TextStyle(
+                            fontFamily: 'Digital',
+                            fontSize: 20,
+                            color: today == i + 1
+                                ? _screen
+                                : _dim.withValues(alpha: 0.3),
+                          ),
+                          child: Text(_week[i]),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 120,
+                    child: LayoutBuilder(
+                      builder: (context, strip) {
+                        final cardWidth = strip.maxWidth * 0.82;
+                        if (alarms.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: _emptyCard(context),
+                          );
+                        }
+                        return ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          itemCount: alarms.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 12),
+                          itemBuilder: (_, i) => _AlarmCard(
+                            alarm: alarms[i],
+                            width: cardWidth,
+                            onToggle: () {
+                              HapticFeedback.mediumImpact();
+                              store.toggle(alarms[i]);
+                            },
+                            onEdit: () => _editAlarm(context, alarms[i]),
+                            onDelete: () => _confirmDelete(context, alarms[i]),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -483,8 +735,9 @@ class _NavItem extends StatelessWidget {
             final color = Color.lerp(_muted, _screen, t)!;
             return DecoratedBox(
               decoration: BoxDecoration(
-                color: _screen.withValues(alpha: 0.12 * t),
+                color: _screen.withValues(alpha: 0.0 * t),
                 borderRadius: const BorderRadius.all(Radius.circular(28)),
+                
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

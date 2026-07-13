@@ -141,29 +141,75 @@ class _TabPanel extends StatelessWidget {
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(24, topInset + 16, 24, 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: Center(child: gauge)),
-            Center(
-              child: Text(
-                nudge,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: _muted),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _TrioStats(stats: stats),
-            const SizedBox(height: 18),
-            const Text(
-              'SHORTCUTS',
-              style: TextStyle(fontSize: 13, color: _muted, letterSpacing: 3),
-            ),
-            const SizedBox(height: 10),
-            _ShortcutsRow(kind: kind),
-            const SizedBox(height: 16),
-            _ConfigCard(columns: configColumns),
-          ],
+        child: OrientationBuilder(
+          builder: (context, orientation) {
+            if (orientation == Orientation.landscape) {
+              return Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      children: [
+                        Expanded(child: Center(child: gauge)),
+                        Center(
+                          child: Text(
+                            nudge,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 13, color: _muted),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 3,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _TrioStats(stats: stats),
+                          const SizedBox(height: 18),
+                          const Text(
+                            'SHORTCUTS',
+                            style: TextStyle(fontSize: 13, color: _muted, letterSpacing: 3),
+                          ),
+                          const SizedBox(height: 10),
+                          _ShortcutsRow(kind: kind),
+                          const SizedBox(height: 16),
+                          _ConfigCard(columns: configColumns),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: Center(child: gauge)),
+                Center(
+                  child: Text(
+                    nudge,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 13, color: _muted),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _TrioStats(stats: stats),
+                const SizedBox(height: 18),
+                const Text(
+                  'SHORTCUTS',
+                  style: TextStyle(fontSize: 13, color: _muted, letterSpacing: 3),
+                ),
+                const SizedBox(height: 10),
+                _ShortcutsRow(kind: kind),
+                const SizedBox(height: 16),
+                _ConfigCard(columns: configColumns),
+              ],
+            );
+          },
         ),
       ),
     );

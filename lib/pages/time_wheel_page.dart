@@ -110,121 +110,241 @@ class _TimeWheelPageState extends State<TimeWheelPage> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Stack(
-                alignment: Alignment.center,
+        child: OrientationBuilder(
+          builder: (context, orientation) {
+            if (orientation == Orientation.landscape) {
+              return Row(
                 children: [
-                  Container(
-                    width: 250,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      color: _slot,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  Expanded(
+                    flex: 3,
+                    child: Stack(
+                      alignment: Alignment.center,
                       children: [
-                        _wheel(
-                          controller: _hourWheel,
-                          count: 24,
-                          onSelect: (value) => setState(() => _hour = value),
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 14),
-                          child: Text(
-                            ':',
-                            style: TextStyle(fontSize: 44, color: _mint),
+                        Container(
+                          width: 250,
+                          height: 90,
+                          decoration: BoxDecoration(
+                            color: _slot,
+                            borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        _wheel(
-                          controller: _minuteWheel,
-                          count: 60,
-                          onSelect: (value) => setState(() => _minute = value),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _wheel(
+                                controller: _hourWheel,
+                                count: 24,
+                                onSelect: (value) => setState(() => _hour = value),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 14),
+                                child: Text(
+                                  ':',
+                                  style: TextStyle(fontSize: 44, color: _mint),
+                                ),
+                              ),
+                              _wheel(
+                                controller: _minuteWheel,
+                                count: 60,
+                                onSelect: (value) => setState(() => _minute = value),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _Option(
+                                  icon: Icons.music_note,
+                                  title: 'SOUND',
+                                  value: _sound,
+                                  onTap: _cycleSound,
+                                ),
+                              ),
+                              Expanded(
+                                child: _Option(
+                                  icon: Icons.notifications,
+                                  title: 'SNOOZE',
+                                  value: 'EVERY $_snooze MIN',
+                                  onTap: _cycleSnooze,
+                                ),
+                              ),
+                              Expanded(
+                                child: _Option(
+                                  icon: Icons.repeat,
+                                  title: 'REPEAT',
+                                  value: _repeat.label,
+                                  onTap: _cycleRepeat,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Tactile(
+                                pressedScale: 0.92,
+                                child: IconButton(
+                                  onPressed: _dismiss,
+                                  icon: Icon(Icons.close, color: Colors.green[200]),
+                                  style: IconButton.styleFrom(
+                                    fixedSize: const Size(60, 60),
+                                    backgroundColor: _closeBg,
+                                  ),
+                                ),
+                              ),
+                              Tactile(
+                                pressedScale: 0.92,
+                                child: IconButton(
+                                  onPressed: _confirm,
+                                  icon: const Icon(Icons.check, color: Colors.black),
+                                  style: IconButton.styleFrom(
+                                    fixedSize: const Size(60, 60),
+                                    backgroundColor: _confirmBg,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _Option(
-                      icon: Icons.music_note,
-                      title: 'SOUND',
-                      value: _sound,
-                      onTap: _cycleSound,
-                    ),
-                  ),
-                  Expanded(
-                    child: _Option(
-                      icon: Icons.notifications,
-                      title: 'SNOOZE',
-                      value: 'EVERY $_snooze MIN',
-                      onTap: _cycleSnooze,
-                    ),
-                  ),
-                  Expanded(
-                    child: _Option(
-                      icon: Icons.repeat,
-                      title: 'REPEAT',
-                      value: _repeat.label,
-                      onTap: _cycleRepeat,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Tactile(
-                    pressedScale: 0.92,
-                    child: IconButton(
-                      onPressed: _dismiss,
-                      icon: Icon(Icons.close, color: Colors.green[200]),
-                      style: IconButton.styleFrom(
-                        fixedSize: const Size(76, 76),
-                        backgroundColor: _closeBg,
+              );
+            }
+            return Column(
+              children: [
+                Expanded(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 250,
+                        height: 90,
+                        decoration: BoxDecoration(
+                          color: _slot,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
-                    ),
-                  ),
-                  Flexible(
-                    child: Text(
-                      'CHOOSE TIME',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.green[200],
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _wheel(
+                              controller: _hourWheel,
+                              count: 24,
+                              onSelect: (value) => setState(() => _hour = value),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 14),
+                              child: Text(
+                                ':',
+                                style: TextStyle(fontSize: 44, color: _mint),
+                              ),
+                            ),
+                            _wheel(
+                              controller: _minuteWheel,
+                              count: 60,
+                              onSelect: (value) => setState(() => _minute = value),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                  Tactile(
-                    pressedScale: 0.92,
-                    child: IconButton(
-                      onPressed: _confirm,
-                      icon: const Icon(Icons.check, color: Colors.black),
-                      style: IconButton.styleFrom(
-                        fixedSize: const Size(76, 76),
-                        backgroundColor: _confirmBg,
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _Option(
+                          icon: Icons.music_note,
+                          title: 'SOUND',
+                          value: _sound,
+                          onTap: _cycleSound,
+                        ),
                       ),
-                    ),
+                      Expanded(
+                        child: _Option(
+                          icon: Icons.notifications,
+                          title: 'SNOOZE',
+                          value: 'EVERY $_snooze MIN',
+                          onTap: _cycleSnooze,
+                        ),
+                      ),
+                      Expanded(
+                        child: _Option(
+                          icon: Icons.repeat,
+                          title: 'REPEAT',
+                          value: _repeat.label,
+                          onTap: _cycleRepeat,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Tactile(
+                        pressedScale: 0.92,
+                        child: IconButton(
+                          onPressed: _dismiss,
+                          icon: Icon(Icons.close, color: Colors.green[200]),
+                          style: IconButton.styleFrom(
+                            fixedSize: const Size(76, 76),
+                            backgroundColor: _closeBg,
+                          ),
+                        ),
+                      ),
+                      Flexible(
+                        child: Text(
+                          'CHOOSE TIME',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.green[200],
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Tactile(
+                        pressedScale: 0.92,
+                        child: IconButton(
+                          onPressed: _confirm,
+                          icon: const Icon(Icons.check, color: Colors.black),
+                          style: IconButton.styleFrom(
+                            fixedSize: const Size(76, 76),
+                            backgroundColor: _confirmBg,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
