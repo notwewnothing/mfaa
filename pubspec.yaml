@@ -17,6 +17,7 @@ dependencies:
   flutter_timezone: ^5.1.0
   app_usage: ^4.1.0
   android_intent_plus: ^6.0.0
+  vibration: ^3.2.0
 
 dev_dependencies:
   flutter_test:

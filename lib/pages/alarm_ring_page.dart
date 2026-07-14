@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../models/alarm.dart';
 import '../services/alarm_store.dart';
+import '../services/alarm_buzz.dart';
 import '../widgets/tactile.dart';
 
 const _mint = Color(0xffa8c889);
@@ -26,14 +27,17 @@ class AlarmRingPage extends StatefulWidget {
 }
 
 class _AlarmRingPageState extends State<AlarmRingPage> {
-  Timer? _pulse;
+  final _buzz = AlarmBuzz();
+  Timer? _flash;
   bool _bright = true;
 
   @override
   void initState() {
     super.initState();
-    _pulse = Timer.periodic(const Duration(milliseconds: 700), (_) {
-      HapticFeedback.heavyImpact();
+
+    _buzz.start(alarmId: widget.alarm?.id);
+
+    _flash = Timer.periodic(const Duration(milliseconds: 700), (_) {
       SystemSound.play(SystemSoundType.alert);
       if (mounted) setState(() => _bright = !_bright);
     });
@@ -41,17 +45,20 @@ class _AlarmRingPageState extends State<AlarmRingPage> {
 
   @override
   void dispose() {
-    _pulse?.cancel();
+    _flash?.cancel();
+    _buzz.stop();
     super.dispose();
   }
 
   Future<void> _snooze(BuildContext context) async {
     HapticFeedback.mediumImpact();
     if (widget.sleepEndMode) {
+      await _buzz.stop();
       if (context.mounted) Navigator.of(context).pop('snooze');
       return;
     }
     final store = AlarmScope.of(context);
+    await _buzz.stop();
     await store.snooze(widget.alarm!);
     if (context.mounted) Navigator.of(context).pop();
   }
@@ -59,10 +66,12 @@ class _AlarmRingPageState extends State<AlarmRingPage> {
   Future<void> _stop(BuildContext context) async {
     HapticFeedback.heavyImpact();
     if (widget.sleepEndMode) {
+      await _buzz.stop();
       if (context.mounted) Navigator.of(context).pop('stop');
       return;
     }
     final store = AlarmScope.of(context);
+    await _buzz.stop();
     await store.stopRinging(widget.alarm!);
     if (context.mounted) Navigator.of(context).pop();
   }

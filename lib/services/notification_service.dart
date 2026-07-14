@@ -5,6 +5,7 @@ import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/alarm.dart';
+import 'alarm_buzz.dart';
 import 'alarm_store.dart';
 
 class NotificationService implements AlarmScheduler {
@@ -65,9 +66,10 @@ class NotificationService implements AlarmScheduler {
     if (id != null) onAlarmTap?.call(id);
   }
 
-  NotificationDetails get _details => const NotificationDetails(
+  NotificationDetails get _details => NotificationDetails(
     android: AndroidNotificationDetails(
-      'alarms',
+
+      'alarms_loud',
       'Alarms',
       channelDescription: 'Scheduled alarm clock notifications',
       importance: Importance.max,
@@ -76,6 +78,9 @@ class NotificationService implements AlarmScheduler {
       audioAttributesUsage: AudioAttributesUsage.alarm,
       fullScreenIntent: true,
       autoCancel: false,
+      ongoing: true,
+      enableVibration: true,
+      vibrationPattern: notificationVibrationPattern,
     ),
     iOS: DarwinNotificationDetails(
       presentAlert: true,
@@ -89,6 +94,9 @@ class NotificationService implements AlarmScheduler {
     if (!_ready) return;
     try {
       await _plugin.cancelAll();
+
+
+      await AlarmBuzz.cancelAllScheduled();
       for (final alarm in alarms) {
         await _schedule(alarm);
       }
@@ -164,5 +172,7 @@ class NotificationService implements AlarmScheduler {
       payload: alarm.id.toString(),
       matchDateTimeComponents: match,
     );
+
+    await AlarmBuzz.scheduleAt(id: id, alarmId: alarm.id, at: at);
   }
 }

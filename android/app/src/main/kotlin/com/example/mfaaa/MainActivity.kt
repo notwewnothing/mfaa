@@ -36,6 +36,39 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "mfaaa/alarm_buzz").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "schedule" -> {
+                    val requestCode = call.argument<Int>("id")
+                    val alarmId = call.argument<Int>("alarmId") ?: -1
+                    val at = call.argument<Number>("at")?.toLong()
+                    if (requestCode == null || at == null) {
+                        result.error("BAD_ARGS", "id and at are required", null)
+                    } else {
+                        AlarmBuzzScheduler.schedule(this, requestCode, alarmId, at)
+                        result.success(null)
+                    }
+                }
+                "cancelAllScheduled" -> {
+                    AlarmBuzzScheduler.cancelAll(this)
+                    result.success(null)
+                }
+                "start" -> {
+                    AlarmBuzzService.start(this, call.argument<Int>("alarmId") ?: -1)
+                    result.success(null)
+                }
+                "stop" -> {
+                    AlarmBuzzService.stop(this)
+                    result.success(null)
+                }
+                "activeAlarmId" -> {
+                    val id = getSharedPreferences(AlarmBuzzService.PREFS, Context.MODE_PRIVATE)
+                        .getInt(AlarmBuzzService.KEY_ACTIVE_ID, -1)
+                    result.success(if (id > 0) id else null)
+                }
+                else -> result.notImplemented()
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "mfaaa/app_icons").setMethodCallHandler { call, result ->
             when (call.method) {
                 "getAppIcon" -> {

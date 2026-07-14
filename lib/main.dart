@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'models/alarm.dart';
 import 'pages/alarm_ring_page.dart';
 import 'pages/clock_dashboard.dart';
+import 'services/alarm_buzz.dart';
 import 'services/alarm_store.dart';
 import 'services/notification_service.dart';
 import 'services/session_store.dart';
@@ -51,6 +52,9 @@ class _AlarmAppState extends State<AlarmApp> {
     if (!_sessions.isLoaded) await _sessions.init();
     final launchId = await _notifications?.launchedByAlarm();
     if (launchId != null) _openRingById(launchId);
+    
+    final buzzing = await AlarmBuzz.activeAlarmId();
+    if (buzzing != null) _openRingById(buzzing);
   }
 
   void _openRingById(int id) {
