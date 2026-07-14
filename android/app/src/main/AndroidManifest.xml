@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED"/>
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions"/>
     <application
-        android:label="Alarm Clock"
+        android:label="mfaa"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

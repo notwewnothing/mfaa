@@ -18,7 +18,7 @@ import 'session_page.dart';
 import 'session_tabs.dart';
 import 'time_wheel_page.dart';
 
-const _screen = Color(0xffa8c889);
+const _screen = Color(0xFFA8C889);
 const _muted = Color(0xff69745f);
 const _dim = Color(0xff59644c);
 const _barGap = 14.0;

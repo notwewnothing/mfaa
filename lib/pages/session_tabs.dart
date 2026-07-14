@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/session.dart';
-import '../services/alarm_store.dart';
 import '../services/session_store.dart';
 import '../widgets/lcd_gauge.dart';
 import '../widgets/slide_up_route.dart';
@@ -70,8 +69,6 @@ class SleepPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = SessionScope.of(context);
-    final alarms = AlarmScope.of(context);
-    final next = alarms.nextAlarm;
 
     return _TabPanel(
       gauge: LcdGauge(score: store.sleepScore, title: 'SLEEP SCORE'),

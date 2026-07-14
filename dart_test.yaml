@@ -1,0 +1,4 @@
+tags:
+  golden:
+    # Golden tests are machine- and wall-clock-dependent; CI excludes them
+    # with `flutter test --exclude-tags=golden`.

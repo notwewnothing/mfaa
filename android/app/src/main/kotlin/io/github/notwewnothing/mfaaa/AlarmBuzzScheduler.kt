@@ -1,4 +1,4 @@
-package com.example.mfaaa
+package io.github.notwewnothing.mfaaa
 
 import android.app.AlarmManager
 import android.app.PendingIntent

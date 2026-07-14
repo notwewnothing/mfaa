@@ -1,4 +1,4 @@
-package com.example.mfaaa
+package io.github.notwewnothing.mfaaa
 
 import android.content.ComponentName
 import android.content.Context

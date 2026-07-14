@@ -1,4 +1,4 @@
-package com.example.mfaaa
+package io.github.notwewnothing.mfaaa
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -332,7 +332,7 @@ class AlarmBuzzService : Service() {
             Notification.Builder(this).setPriority(Notification.PRIORITY_LOW)
         }
         return builder
-            .setSmallIcon(applicationInfo.icon)
+            .setSmallIcon(R.drawable.ic_stat_alarm)
             .setContentTitle("ALARM RINGING")
             .setContentText("It stops when it's done. GET UP.")
             .setOngoing(true)

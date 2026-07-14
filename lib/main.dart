@@ -1,4 +1,3 @@
-import 'package:android_intent_plus/flag.dart';
 import 'package:flutter/material.dart';
 // i hate this app :/
 import 'models/alarm.dart';
