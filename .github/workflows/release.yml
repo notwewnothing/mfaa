@@ -133,3 +133,22 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+          body: |
+            ## Which APK do I download?
+
+            | File | Compatible phones |
+            | --- | --- |
+            | `mfaaa-<version>-universal.apk` | Any Android phone — safest pick if you're unsure |
+            | `mfaaa-<version>-arm64-v8a.apk` | Most phones from 2017 onward (64-bit ARM) — recommended |
+            | `mfaaa-<version>-armeabi-v7a.apk` | Older or budget phones (32-bit ARM) |
+            | `mfaaa-<version>-x86_64.apk` | Intel/AMD Android devices — rare, mostly emulators |
+            | `mfaaa-<version>.aab` | Play Store upload format only — not for direct install |
+
+            # IMPORTANT NOTES BEFORE YOU INSTALL
+
+            For this app to work properly, you must grant the following permissions:
+
+            | Permission | Prompted at | Purpose |
+            | --- | --- | --- |
+            | Usage Access | First app launch | Powers screen-time stats, focus/distracted time tracking, and the focus score |
+            | Display over other apps | When you enable App Blocking | Required for the app-blocking overlay to work. Some phone manufacturers restrict this by default — if the toggle won't stick, check your device's manufacturer-specific settings (e.g. autostart/permission manager) first |
