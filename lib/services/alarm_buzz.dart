@@ -17,6 +17,7 @@ const List<int> _amplitudes = [0, 255, 0, 255, 0, 255, 0, 255, 0];
 class AlarmBuzz {
   Timer? _keepAlive;
   Timer? _fallback;
+  Timer? _cap;
   bool _running = false;
 
   static Future<void> scheduleAt({
@@ -60,12 +61,20 @@ class AlarmBuzz {
     await _startPluginFallback();
   }
 
-  Future<void> stop() async {
+  // Cancels the Dart-side fallback timers without touching the native
+  // service — the ring page dies, the alarm doesn't.
+  void detach() {
     _running = false;
     _keepAlive?.cancel();
     _keepAlive = null;
     _fallback?.cancel();
     _fallback = null;
+    _cap?.cancel();
+    _cap = null;
+  }
+
+  Future<void> stop() async {
+    detach();
     try {
       await _channel.invokeMethod('stop');
     } catch (_) {}
@@ -75,6 +84,10 @@ class AlarmBuzz {
   }
 
   Future<void> _startPluginFallback() async {
+    // Mirrors the native service's 10-minute vibration window.
+    _cap?.cancel();
+    _cap = Timer(const Duration(minutes: 10), stop);
+
     var hasVibrator = false;
     try {
       hasVibrator = await Vibration.hasVibrator();

@@ -27,6 +27,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/1784034034146_afbm86.mp3
   fonts:
     - family: Digital
       fonts:

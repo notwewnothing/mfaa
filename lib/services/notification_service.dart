@@ -168,7 +168,7 @@ class NotificationService implements AlarmScheduler {
       notificationDetails: _details,
       androidScheduleMode: AndroidScheduleMode.alarmClock,
       title: title ?? 'ALARM — ${alarm.timeLabel24}',
-      body: '${alarm.sound} • TAP TO STOP OR SNOOZE',
+      body: '${alarm.sound} • NO SNOOZE. NO STOP. GET UP',
       payload: alarm.id.toString(),
       matchDateTimeComponents: match,
     );

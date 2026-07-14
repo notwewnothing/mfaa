@@ -24,7 +24,7 @@ class AlarmBuzzReceiver : BroadcastReceiver() {
 
         val alarmId = intent.getIntExtra(AlarmBuzzService.EXTRA_ALARM_ID, -1)
         try {
-            AlarmBuzzService.start(context, alarmId)
+            AlarmBuzzService.start(context, alarmId, freshFire = true)
         } catch (_: Exception) {
             // Foreground start refused (shouldn't happen off setAlarmClock,
             // but OEMs get creative) — buzz straight from the receiver as a
